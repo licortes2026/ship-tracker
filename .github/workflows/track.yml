@@ -1,0 +1,52 @@
+name: Track the World Odyssey
+
+on:
+  schedule:
+    # Every hour, on the hour, UTC. GitHub runs these best-effort, so expect
+    # some runs to be late by a few minutes and the occasional one to be skipped.
+    - cron: "0 * * * *"
+  workflow_dispatch:          # lets you run it by hand from the Actions tab
+
+# The job commits back to the repo, so it needs write access.
+permissions:
+  contents: write
+
+concurrency:
+  group: track
+  cancel-in-progress: false
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install the websocket client
+        run: npm install --no-audit --no-fund ws
+
+      - name: Listen for a position
+        env:
+          AISSTREAM_API_KEY: ${{ secrets.AISSTREAM_API_KEY }}
+          ODYSSEY_MMSI: "311000410"
+          LISTEN_SECONDS: "75"
+        run: node scripts/fetch-position.js
+
+      - name: Commit anything new
+        run: |
+          git config user.name  "odyssey-tracker"
+          git config user.email "odyssey-tracker@users.noreply.github.com"
+          git add docs/position.json docs/track.json docs/log.jsonl
+          if git diff --staged --quiet; then
+            echo "nothing changed this hour"
+          else
+            git commit -m "position $(date -u '+%Y-%m-%d %H:%M UTC')"
+            git push
+          fi

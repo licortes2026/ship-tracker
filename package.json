@@ -1,0 +1,8 @@
+{
+  "name": "world-odyssey-pages",
+  "version": "1.0.0",
+  "description": "Hourly AIS fetch via GitHub Actions, served by GitHub Pages",
+  "private": true,
+  "dependencies": { "ws": "^8.18.0" },
+  "license": "Apache-2.0"
+}
