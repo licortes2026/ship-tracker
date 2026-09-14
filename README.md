@@ -77,7 +77,7 @@ are skipping and the rest run normally. A green run here covers this repo.
 
 ## Licensing
 
-Code under Apache 2.0, see `LICENSE` and `NOTICE`. Page text and design under CC BY 4.0.
+Code, text and design under Apache 2.0, see `LICENSE` and `NOTICE`.
 Earth imagery NASA Blue Marble, coastlines Natural Earth, both public domain.
 Not affiliated with Semester at Sea, the Institute for Shipboard Education, Colorado
 State University, or the vessel's owners or operators.

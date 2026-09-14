@@ -127,9 +127,23 @@ dead reckoning off as a fix is exactly the failure this page was built to avoid.
 **The log is append-only and never pruned.** A full voyage of hourly fixes is about 2,500
 lines and 158KB. Earlier code thinned it; that was solving a problem that does not exist.
 
-**Apache 2.0 for code, CC BY 4.0 for content.** Apache specifically for section 6, which
-grants no trademark rights, on a project that has to name ships and universities it is
-not affiliated with.
+**Apache 2.0 for everything, code and content alike.** Apache specifically for section 6,
+which grants no trademark rights, on a project that has to name ships and universities it
+is not affiliated with.
+
+The content was briefly dual-licensed CC BY 4.0, dropped 2026-09-13. Three reasons. The
+split could not actually be drawn: this is one HTML file with CSS, SVG path data, copy and
+JavaScript interleaved, so no one could say which licence governed the disclaimer
+paragraph. It left the trademarks exposed, because the page *text* is where Semester at
+Sea, the Institute for Shipboard Education and Colorado State University are named, and CC
+BY has no trademark clause — section 6 is the clause that needs to reach those words.
+And `LICENSE` and `NOTICE` never mentioned CC BY in the first place; it appeared only in
+two prose sentences, so removing it settled a contradiction rather than giving anything up.
+
+Apache 2.0 licenses a "Work", meaning any work of authorship, not only source code, and
+requires attribution through section 4, so nothing was lost by consolidating. Note that
+CC BY 4.0 is irrevocable: anyone holding a copy published before that date keeps CC BY
+rights to that version's content. The change binds future versions only.
 
 **No trademark use in the repo name or branding.** The repo is `ship-tracker`, not
 `semester-at-sea-tracker`. The disclaimer names Semester at Sea, the Institute for
