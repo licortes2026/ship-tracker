@@ -2,11 +2,12 @@
 const fs = require("fs");
 const path = require("path");
 const os = require("os");
+const { ROOT, ODYSSEY, hasServerRepo } = require("./paths");
 
 let pass = 0, fail = 0; const failures = [];
 function ok(n, c, d){ if (c) pass++; else { fail++; failures.push(n + (d ? "  -> " + d : "")); } }
 
-const SRC = fs.readFileSync("/home/claude/wo-pages/scripts/fetch-position.js", "utf8");
+const SRC = fs.readFileSync(path.join(ROOT, "scripts", "fetch-position.js"), "utf8");
 
 console.log("\n12. Action script");
 ok("no key means a clean exit, not a crash", /No AISSTREAM_API_KEY/.test(SRC));
@@ -67,7 +68,7 @@ ok("a whole voyage of hourly fixes stays small",
 fs.rmSync(tmp, { recursive: true, force: true });
 
 console.log("\n13. Workflow and repo hygiene");
-const YML = fs.readFileSync("/home/claude/wo-pages/.github/workflows/track.yml", "utf8");
+const YML = fs.readFileSync(path.join(ROOT, ".github", "workflows", "track.yml"), "utf8");
 ok("runs hourly", /cron: "0 \* \* \* \*"/.test(YML));
 ok("can be run by hand", /workflow_dispatch/.test(YML));
 ok("has write permission to commit", /contents: write/.test(YML));
@@ -78,7 +79,10 @@ ok("key is not hardcoded anywhere", !/[A-Za-z0-9]{32,}/.test(YML.replace(/uses:.
 ok("commits the permanent log", /docs\/log\.jsonl/.test(YML));
 ok("commits nothing when nothing changed", /git diff --staged --quiet/.test(YML));
 
-for (const repo of ["/home/claude/wo-pages", "/home/claude/odyssey"]){
+const repos = [ROOT];
+if (hasServerRepo) repos.push(ODYSSEY);
+else console.log("   - server repo not present, its hygiene checks skipped");
+for (const repo of repos){
   const gi = fs.existsSync(path.join(repo, ".gitignore")) ? fs.readFileSync(path.join(repo, ".gitignore"), "utf8") : "";
   ok(path.basename(repo) + ": ignores node_modules", /node_modules/.test(gi));
   ok(path.basename(repo) + ": has a LICENSE", fs.existsSync(path.join(repo, "LICENSE")));
@@ -86,10 +90,11 @@ for (const repo of ["/home/claude/wo-pages", "/home/claude/odyssey"]){
      /Apache License/.test(fs.readFileSync(path.join(repo, "LICENSE"), "utf8")));
   ok(path.basename(repo) + ": no key file present", !fs.existsSync(path.join(repo, ".aisstream-key")));
 }
-ok("server repo ignores the key file",
-   /aisstream-key/.test(fs.readFileSync("/home/claude/odyssey/.gitignore", "utf8")));
-ok("server repo ignores collected data",
-   /data\//.test(fs.readFileSync("/home/claude/odyssey/.gitignore", "utf8")));
+if (hasServerRepo){
+  const ogi = fs.readFileSync(path.join(ODYSSEY, ".gitignore"), "utf8");
+  ok("server repo ignores the key file", /aisstream-key/.test(ogi));
+  ok("server repo ignores collected data", /data\//.test(ogi));
+}
 
 console.log("\n" + "=".repeat(52));
 console.log(`  ${pass} passed, ${fail} failed`);

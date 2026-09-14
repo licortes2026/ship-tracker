@@ -10,14 +10,16 @@ function ok(name, cond, detail){
 }
 function group(n){ console.log("\n" + n); }
 
-const BUILDS = {
-  standalone: "/mnt/user-data/outputs/world-odyssey-tracker-v4.html",
-  server:     "/home/claude/odyssey/public/index.html",
-  pages:      "/home/claude/wo-pages/docs/index.html"
-};
+// Paths are resolved relative to this directory, never absolute, so the battery
+// runs from a clone wherever it sits. ROOT is the Pages repo (this one); NEXT is
+// the directory above it, which holds the other two builds when they are checked
+// out beside it. Builds that are not present are skipped rather than failed: a
+// clone of the Pages repo alone is a legitimate checkout.
+const { BUILDS, MISSING, hasServerRepo, HARNESS, AIS_BUILD, ROOT } = require("./paths");
 
 // ---------------------------------------------------------------- structure
 group("1. File structure");
+for (const name of MISSING) console.log(`   - ${name} build not present, skipped`);
 for (const [name, f] of Object.entries(BUILDS)){
   const h = fs.readFileSync(f, "utf8");
   ok(`${name}: exists and non-trivial`, h.length > 50000, h.length + " bytes");
@@ -30,16 +32,19 @@ for (const [name, f] of Object.entries(BUILDS)){
   ok(`${name}: disclaimer present`, /class="disclaimer"/.test(h));
   ok(`${name}: no affiliation line`, /not affiliated with/i.test(h));
   ok(`${name}: repo link present`, /github\.com\/licortes2026\/ship-tracker/.test(h));
-  ok(`${name}: personal note present`, /free time to follow my kid/.test(h));
+  ok(`${name}: personal note present`, /follow your kid's adventure/.test(h));
   ok(`${name}: outbound links open safely`,
      (h.match(/target="_blank"/g)||[]).length === (h.match(/rel="noopener"/g)||[]).length);
 }
 {
-  const h = fs.readFileSync(BUILDS.standalone, "utf8");
-  ok("standalone: image is embedded", /href="data:image\/webp;base64,/.test(h));
-  ok("standalone: makes no network requests at all",
-     !/fetch\("track|fetch\("position/.test(h));
+  if (BUILDS.standalone){
+    const h = fs.readFileSync(BUILDS.standalone, "utf8");
+    ok("standalone: image is embedded", /href="data:image\/webp;base64,/.test(h));
+    ok("standalone: makes no network requests at all",
+       !/fetch\("track|fetch\("position/.test(h));
+  }
   for (const n of ["server","pages"]){
+    if (!BUILDS[n]) continue;
     const p = fs.readFileSync(BUILDS[n], "utf8");
     ok(`${n}: image is a separate cacheable file`, /href="earth\.webp"/.test(p));
     ok(`${n}: image file shipped`,
@@ -49,7 +54,7 @@ for (const [name, f] of Object.entries(BUILDS)){
 
 // ---------------------------------------------------------------- core maths
 group("2. Route geometry");
-const A = load(BUILDS.standalone);
+const A = load(HARNESS);
 const T = A.T;
 ok("11 ports", T.PORTS.length === 11);
 ok("10 legs", T.LEGS.length === 10);
@@ -137,7 +142,7 @@ ok("no leg demands an impossible speed", speedOk, speeds.join(", ") + " kt");
 group("6. Estimated positions");
 const now = Date.now();
 {
-  const B = load(BUILDS.server);
+  const B = load(AIS_BUILD);
   B.T.setAis([]);
   B.T.draw();
   ok("no fixes: nothing drawn as reported", (B.els.real.attrs.d || "") === "");
@@ -145,7 +150,7 @@ const now = Date.now();
   ok("no fixes: marker labelled estimated", B.T.getShipInfo().est === true);
 }
 {
-  const B = load(BUILDS.server);
+  const B = load(AIS_BUILD);
   // hourly fixes should read as a solid reported line, no dotted infill
   const hourly = [];
   for (let i = 6; i >= 0; i--) hourly.push({ t: now - i*3600000, lat: 45 - i*0.1, lon: -9 - i*0.05, sog: 13, cog: 200 });
@@ -158,7 +163,7 @@ const now = Date.now();
   ok("marker is an AIS fix", B.T.getShipInfo().source === "AIS");
 }
 {
-  const B = load(BUILDS.server);
+  const B = load(AIS_BUILD);
   B.T.setAis([{ t: now - 50*3600000, lat: 40.0, lon: -10.0, sog: 12, cog: 190 }]);
   B.T.draw();
   const dotted = ((B.els.est.attrs.d || "").match(/M/g) || []).length;
@@ -170,13 +175,13 @@ const now = Date.now();
   ok("estimates get no dots, only the real fix does", dots === 1, dots + " dots");
 }
 {
-  const B = load(BUILDS.server);
+  const B = load(AIS_BUILD);
   B.T.setAis([{ t: now - 30*3600000, lat: 40, lon: -10, sog: 0, cog: 0 }]);
   B.T.draw();
   ok("zero reported speed falls back to the timetable", B.T.getShipInfo().est === true);
 }
 {
-  const B = load(BUILDS.server);
+  const B = load(AIS_BUILD);
   B.T.setAis([{ t: now - 400*24*3600000, lat: 52, lon: 4, sog: 12, cog: 180 }]);
   B.T.draw();
   const d = B.els.est.attrs.d || "";
@@ -187,7 +192,7 @@ const now = Date.now();
 // ---------------------------------------------------------------- ui
 group("7. Ports, ship overlay, basemap");
 {
-  const B = load(BUILDS.standalone);
+  const B = load(HARNESS);
   B.T.draw();
   for (let i = 0; i < 11; i++){
     B.T.showPort(i);
@@ -216,7 +221,7 @@ group("7. Ports, ship overlay, basemap");
      new Date(B.T.PORTS[4].dep) - new Date(B.T.PORTS[4].arr) === 10*3600000);
 }
 {
-  const B = load(BUILDS.standalone);
+  const B = load(HARNESS);
   ok("satellite is the default view", B.els.map.attrs.class === "basemap-sat");
   ok("the button offers the chart", B.els.basemap.textContent === "Chart");
   B.T.setBasemap("chart");
@@ -224,7 +229,7 @@ group("7. Ports, ship overlay, basemap");
   ok("the choice is remembered", B.store.wo_basemap === "chart");
 }
 {
-  const B = load(BUILDS.standalone, { noStorage:true });
+  const B = load(HARNESS, { noStorage:true });
   ok("a browser with storage blocked still loads", !!B.T.PORTS);
   B.T.setBasemap("chart");
   ok("and still toggles", B.els.map.attrs.class === "basemap-chart");
@@ -247,7 +252,7 @@ group("8. Manual fix logging is gone");
 
 group("9. Zoom and pan limits");
 {
-  const B = load(BUILDS.standalone);
+  const B = load(HARNESS);
   for (let i = 0; i < 40; i++) B.T.zoomBy(0.5, 190, 170);
   ok("zooming in stops at a floor", B.T.view.span >= 1.1, "span " + B.T.view.span.toFixed(2));
   for (let i = 0; i < 40; i++) B.T.zoomBy(2, 190, 170);

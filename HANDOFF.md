@@ -160,6 +160,12 @@ Home Screen from Safari.
 * **A selected element that changes size drops out of a size-based selector.** Cost one
   bug where the previously selected port stayed red. Tag elements, do not measure them.
 * **GitHub Actions pushes race with anything else touching main.** Hence the retry loop.
+* **A test harness global can be silently ignored by the runtime that owns that name.**
+  Deno defines `localStorage` and `navigator` as accessors whose setter discards the
+  assignment, so `global.localStorage = stub` left the real one in place and the page
+  under test wrote to Deno's actual storage. The failure surfaced as "the choice is
+  remembered" failing, which reads like a bug in the page and is not. The harness now
+  uses `Object.defineProperty` for every global it fakes.
 
 ---
 
@@ -169,13 +175,32 @@ Home Screen from Safari.
 cd tests && ./test-all.sh
 ```
 
-195 tests: page logic across all three builds, route geometry, the schedule state machine
-sampled every six hours across the whole voyage, estimate generation, the interface, zoom
-limits, server endpoints and caching, the Action script's guards, and repo hygiene.
+Page logic across all three builds, route geometry, the schedule state machine sampled
+every six hours across the whole voyage, estimate generation, the interface, zoom limits,
+server endpoints and caching, the Action script's guards, and repo hygiene.
 
 They run headless by loading each page's IIFE into a fake DOM (`tests/harness.js`) and
 exposing its internals. There is no browser in the loop, so anything genuinely visual
 still needs eyes on it.
+
+**Paths are relative, and missing builds are skipped, not failed.** `tests/paths.js`
+works out where the builds are from its own location. It handles both layouts: this
+`SaS` directory with `wo-pages/` and `odyssey/` side by side, where everything runs, and
+a bare clone of the Pages repo on its own, where the two suites that need the other
+builds stand down and say so. That matters because the published repo *is* the Pages
+build at its root, with no `odyssey/` in it, so a cloner who runs the battery would
+otherwise get a wall of failures for files that were never meant to be there.
+
+Counts depend on what is present: 157 from this directory, 131 from a bare clone. The
+original 195 assumed all three builds plus a machine with Node.
+
+**Node is preferred, Deno is accepted.** `test-all.sh` detects which is installed. The
+server suite needs Node specifically, since it boots `server.js`, and skips without it.
+
+**The standalone build is not on disk anywhere.** `world-odyssey-tracker-v4.html` only
+ever existed in the session sandbox that built it. Its structure tests skip. If you want
+it back, rebuild it from the Pages build by inlining `earth.webp` as a base64 data URI
+and removing the two `fetch` calls.
 
 ---
 

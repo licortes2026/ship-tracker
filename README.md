@@ -63,6 +63,18 @@ changed, so a redeploy reaches open pages without downloading the page every hou
   second copy: every hourly commit is a restorable snapshot, so even a bad run that
   corrupted a file could be rolled back.
 
+## Tests
+
+    cd tests && ./test-all.sh
+
+Needs Node, or Deno if you have that instead. Nothing else, and no network. The
+suites load the page's script into a fake DOM and check the route geometry, the
+schedule, the estimate drawing, the interface and the Action's guards.
+
+This repo is the Pages build. The project also has a standalone single-file build
+and a server build which live outside it, so the suites that need those say they
+are skipping and the rest run normally. A green run here covers this repo.
+
 ## Licensing
 
 Code under Apache 2.0, see `LICENSE` and `NOTICE`. Page text and design under CC BY 4.0.

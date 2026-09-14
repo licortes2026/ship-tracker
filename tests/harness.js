@@ -61,19 +61,28 @@ function load(file, opts){
                 contains(x){return this.c.has(x)} },
     getBoundingClientRect: () => ({ width:opts.w||380, height:opts.h||340, left:0, top:0 }) });
 
-  global.document = { getElementById: id => els[id] || (els[id] = mk()),
+  // Some runtimes already own these names. Deno, for one, defines localStorage and
+  // navigator as accessors whose setter quietly discards the assignment, so a plain
+  // `global.x = stub` leaves the real implementation in place and the page under
+  // test talks to it instead of to us. That failure is silent and looks like a bug
+  // in the page. Define the property outright so the stub always wins.
+  function setGlobal(name, value){
+    Object.defineProperty(global, name, { value, writable:true, configurable:true, enumerable:true });
+  }
+
+  setGlobal("document", { getElementById: id => els[id] || (els[id] = mk()),
     createElement: mk, querySelectorAll: () => [],
     querySelector: s => s === ".wordmark" ? wordmark : null,
-    fonts:null, hidden:false, addEventListener(t,fn){ listeners[t]=listeners[t]||[]; listeners[t].push(fn); } };
-  global.window = { addEventListener(){} };
-  global.localStorage = opts.noStorage
+    fonts:null, hidden:false, addEventListener(t,fn){ listeners[t]=listeners[t]||[]; listeners[t].push(fn); } });
+  setGlobal("window", { addEventListener(){} });
+  setGlobal("localStorage", opts.noStorage
     ? { getItem(){ throw new Error("blocked"); }, setItem(){ throw new Error("blocked"); } }
-    : { getItem: k => store[k] || null, setItem: (k,v) => { store[k] = v; } };
-  global.navigator = {};
-  global.setInterval = () => {};
-  global.setTimeout = () => {};
-  global.fetch = opts.fetch;
-  global.location = { protocol: opts.protocol || "https:", href: "https://example.test/" };
+    : { getItem: k => store[k] || null, setItem: (k,v) => { store[k] = v; } });
+  setGlobal("navigator", {});
+  setGlobal("setInterval", () => {});
+  setGlobal("setTimeout", () => {});
+  setGlobal("fetch", opts.fetch);
+  setGlobal("location", { protocol: opts.protocol || "https:", href: "https://example.test/" });
 
   eval(code);
   const T = global.__T;

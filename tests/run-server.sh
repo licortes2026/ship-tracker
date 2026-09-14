@@ -1,7 +1,24 @@
 #!/bin/bash
 # Exercises the track server end to end against a seeded log.
+#
+# The server build is a separate directory beside this repo, and is not part of a
+# Pages-only clone. When it is not there, say so and pass: there is nothing to
+# test, which is not the same as a failure.
 set -u
-cd /home/claude/odyssey
+HERE="$(cd "$(dirname "$0")" && pwd)"
+ODYSSEY="$(cd "$HERE/../.." && pwd)/odyssey"
+if [ ! -f "$ODYSSEY/server.js" ]; then
+  echo "10-11. Server endpoints and caching"
+  echo "   - server build not present at $ODYSSEY, skipped"
+  exit 0
+fi
+if ! command -v node >/dev/null 2>&1; then
+  echo "10-11. Server endpoints and caching"
+  echo "   - node not installed, server suite skipped"
+  exit 0
+fi
+cd "$ODYSSEY" || exit 1
+mkdir -p data
 PASS=0; FAIL=0
 chk(){ if [ "$2" = "$3" ]; then PASS=$((PASS+1)); else FAIL=$((FAIL+1)); echo "   FAIL: $1 (got '$2', wanted '$3')"; fi; }
 chkgt(){ if [ "$2" -gt "$3" ] 2>/dev/null; then PASS=$((PASS+1)); else FAIL=$((FAIL+1)); echo "   FAIL: $1 (got '$2', wanted > $3)"; fi; }
