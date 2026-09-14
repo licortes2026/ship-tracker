@@ -18,7 +18,8 @@ concurrency:
 jobs:
   fetch:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    # Has to comfortably exceed LISTEN_SECONDS below, plus checkout and npm install.
+    timeout-minutes: 12
 
     steps:
       - name: Check out the repo
@@ -36,7 +37,13 @@ jobs:
         env:
           AISSTREAM_API_KEY: ${{ secrets.AISSTREAM_API_KEY }}
           ODYSSEY_MMSI: "311000410"
-          LISTEN_SECONDS: "75"
+          # Eight minutes, not 75 seconds. She broadcasts every ~10s underway, but
+          # off a coast where aisstream's network is thin only about one in seven of
+          # those transmissions arrives — measured at roughly one every 7-8 minutes
+          # near Cape Finisterre. A 75s window caught that 2 times in 13; eight
+          # minutes should catch it most hours. Actions minutes are unlimited on
+          # public repos, so the only cost is the job running longer.
+          LISTEN_SECONDS: "480"
         run: node scripts/fetch-position.js
 
       - name: Commit anything new

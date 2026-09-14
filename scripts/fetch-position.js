@@ -55,7 +55,7 @@ const points = readLog();
 const last = points[points.length - 1] || null;
 console.log(`log holds ${points.length} fixes`);
 
-let best = null, meta = {}, gotStatic = false;
+let best = null, meta = {}, gotStatic = false, heard = 0;
 
 const ws = new WebSocket("wss://stream.aisstream.io/v0/stream", { perMessageDeflate: true });
 const timer = setTimeout(finish, WINDOW);
@@ -82,8 +82,13 @@ ws.on("message", raw => {
       : Date.now();
     best = { t: Number.isFinite(t) ? t : Date.now(), lat: r.Latitude, lon: r.Longitude,
              sog: r.Sog, cog: r.Cog };
+    heard++;
     console.log(`heard her: ${best.lat.toFixed(4)}, ${best.lon.toFixed(4)} @ ${best.sog} kt`);
-    if (gotStatic) finish();            // have position and identity, no need to wait
+    // Deliberately no early exit. This used to stop as soon as it had a position
+    // and the static data, which threw away the rest of the window and left a fix
+    // that could be minutes staler than the one arriving later. Run the window out
+    // and keep the last report: each one overwrites the previous, so we end with
+    // the freshest. Costs nothing, since the job is waiting either way.
   }
 
   if (msg.MessageType === "ShipStaticData"){
@@ -104,6 +109,11 @@ function finish(){
   try { ws.close(); } catch (e) {}
 
   fs.mkdirSync(DOCS, { recursive: true });
+
+  // Reception quality, not just success or failure. She transmits about every 10s
+  // underway, so this count against the window length says how well the network is
+  // actually hearing her, which is the number worth watching over the voyage.
+  console.log(`window closed: ${heard} report(s) in ${WINDOW / 1000}s, static data ${gotStatic ? "yes" : "no"}`);
 
   if (!best){
     console.log("no report in this window: out of terrestrial range, or no receiver nearby");
