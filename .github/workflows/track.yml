@@ -50,12 +50,15 @@ jobs:
           fi
           git commit -m "position $(date -u '+%Y-%m-%d %H:%M UTC')"
 
+          # The remote can move between checkout and push: your own commits, a Pages
+          # deploy, a previous run finishing late. Re-sync and retry rather than failing.
           for attempt in 1 2 3 4; do
             if git push; then
               echo "pushed on attempt $attempt"
               exit 0
             fi
             echo "push rejected, re-syncing (attempt $attempt)"
+            # log.jsonl is append-only, so if two runs ever raced, keep both sets of lines.
             if ! git pull --rebase --autostash origin main; then
               echo "rebase hit a conflict, keeping both sides of the log"
               git checkout --theirs docs/log.jsonl 2>/dev/null || true
