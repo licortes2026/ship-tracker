@@ -32,7 +32,7 @@ for (const [name, f] of Object.entries(BUILDS)){
   ok(`${name}: disclaimer present`, /class="disclaimer"/.test(h));
   ok(`${name}: no affiliation line`, /not affiliated with/i.test(h));
   ok(`${name}: repo link present`, /github\.com\/licortes2026\/ship-tracker/.test(h));
-  ok(`${name}: personal note present`, /follow your kid's adventure/.test(h));
+  ok(`${name}: personal note present`, /follow your students' adventure/.test(h));
   ok(`${name}: outbound links open safely`,
      (h.match(/target="_blank"/g)||[]).length === (h.match(/rel="noopener"/g)||[]).length);
 }
