@@ -46,7 +46,23 @@ jobs:
           git add docs/position.json docs/track.json docs/log.jsonl
           if git diff --staged --quiet; then
             echo "nothing changed this hour"
-          else
-            git commit -m "position $(date -u '+%Y-%m-%d %H:%M UTC')"
-            git push
+            exit 0
           fi
+          git commit -m "position $(date -u '+%Y-%m-%d %H:%M UTC')"
+
+          for attempt in 1 2 3 4; do
+            if git push; then
+              echo "pushed on attempt $attempt"
+              exit 0
+            fi
+            echo "push rejected, re-syncing (attempt $attempt)"
+            if ! git pull --rebase --autostash origin main; then
+              echo "rebase hit a conflict, keeping both sides of the log"
+              git checkout --theirs docs/log.jsonl 2>/dev/null || true
+              git add docs/log.jsonl docs/track.json docs/position.json 2>/dev/null || true
+              git rebase --continue || git rebase --abort
+            fi
+            sleep $((attempt * 5))
+          done
+          echo "could not push after 4 attempts"
+          exit 1
