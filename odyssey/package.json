@@ -1,0 +1,13 @@
+{
+  "name": "world-odyssey-tracker",
+  "version": "1.0.0",
+  "description": "AIS track server for MV World Odyssey, MMSI 311000410",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "ws": "^8.21.3"
+  },
+  "license": "Apache-2.0"
+}

@@ -6,12 +6,14 @@
 //
 // Two layouts are supported:
 //
-//   ship-tracker/              a clone of the Pages repo on its own. Only the
-//     docs/index.html          Pages build exists; the rest is skipped.
+//   ship-tracker/              the published repo. The server build sits inside
+//     docs/index.html          it, so both are found.
 //     tests/
+//     odyssey/
+//       public/index.html
 //
 //   SaS/                       both builds side by side, as the project was
-//     wo-pages/                developed. Everything runs.
+//     wo-pages/                developed. Also works.
 //       docs/index.html
 //       tests/
 //     odyssey/
@@ -25,9 +27,12 @@ const HERE = __dirname;
 const ROOT = path.resolve(HERE, "..");        // the Pages repo
 const NEXT = path.resolve(ROOT, "..");        // its parent, where sibling builds sit
 
-// The server build is only believed if it has a server in it, so an unrelated
-// directory called "odyssey" next door cannot masquerade as one.
-const ODYSSEY = path.join(NEXT, "odyssey");
+// The server build lives inside the repo when published, and beside it in the
+// development directory. Check both, in that order. It is only believed if it
+// has a server in it, so an unrelated directory called "odyssey" cannot
+// masquerade as one.
+const ODYSSEY = [path.join(ROOT, "odyssey"), path.join(NEXT, "odyssey")]
+  .find(d => fs.existsSync(path.join(d, "server.js"))) || path.join(ROOT, "odyssey");
 const hasServerRepo = fs.existsSync(path.join(ODYSSEY, "server.js"));
 
 function firstThatExists(candidates){

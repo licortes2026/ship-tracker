@@ -11,7 +11,9 @@ chmod +x test-all.sh run-server.sh 2>/dev/null
 
 HERE="$(pwd)"
 ROOT="$(cd "$HERE/.." && pwd)"        # the Pages repo
-ODYSSEY="$(cd "$ROOT/.." && pwd)/odyssey"
+# The server build is inside the repo when published, beside it in development.
+ODYSSEY="$ROOT/odyssey"
+[ -f "$ODYSSEY/server.js" ] || ODYSSEY="$(cd "$ROOT/.." && pwd)/odyssey"
 
 # Node is the intended runtime. Deno runs these CommonJS tests too, so accept it
 # rather than refusing to run at all.

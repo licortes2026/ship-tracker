@@ -44,7 +44,8 @@ The test battery checks all three.
 
 ## 3. Repository layout
 
-### `wo-pages/` (the deployed one)
+Two layouts exist and both work. **The published repo** is the Pages build at its root
+with the server build as a subdirectory:
 
 ```
 .github/workflows/track.yml   hourly cron, listens for AIS, commits the result
@@ -54,8 +55,14 @@ docs/earth.webp               NASA Blue Marble, 2048x1024, 118KB
 docs/log.jsonl                APPEND ONLY. the permanent record. never prune this
 docs/track.json               rebuilt from log.jsonl every run
 docs/position.json            latest fix only, ~270 bytes, what the page polls
-tests/                        the test battery
+tests/                        the test battery, for both builds
+HANDOFF.md                    this document
+odyssey/                      the server alternative (see below)
 ```
+
+**This `SaS` directory** keeps `wo-pages/` and `odyssey/` as siblings, which is how the
+project was developed. `tests/paths.js` detects which layout it is in, so the battery runs
+either way.
 
 ### `odyssey/` (the server alternative)
 
@@ -65,8 +72,17 @@ deploy.sh          one-command deploy to a VPS, sets up systemd and Caddy
 install.sh         local setup
 public/            the page and its image
 data/              positions.jsonl, gitignored
-tests/             same battery
 ```
+
+Added to the repo 2026-09-13. Its `HANDOFF.md` and `tests/` are deliberately **not**
+committed: the repo root already has both, and duplicating a 200-line document and a test
+battery inside one repo guarantees they drift apart. The root `tests/` covers the server
+build, so nothing is lost. The local `odyssey/tests/` copy in this directory is redundant
+for the same reason — the root one is canonical.
+
+`odyssey/LICENSE` and `odyssey/NOTICE` *are* committed, even though they duplicate the
+root copies, so the directory stays self-contained when `deploy.sh` ships it to a VPS.
+Licence text does not drift.
 
 ---
 

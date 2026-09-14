@@ -71,9 +71,16 @@ Needs Node, or Deno if you have that instead. Nothing else, and no network. The
 suites load the page's script into a fake DOM and check the route geometry, the
 schedule, the estimate drawing, the interface and the Action's guards.
 
-This repo is the Pages build. The project also has a standalone single-file build
-and a server build which live outside it, so the suites that need those say they
-are skipping and the rest run normally. A green run here covers this repo.
+The server build in `odyssey/` is picked up automatically and its suite runs too,
+provided Node is installed. The standalone single-file build lives outside this
+repo, so its few structure checks say they are skipping.
+
+## The server alternative
+
+`odyssey/` holds the same page served by a small Node process instead of GitHub
+Pages. It collects far more positions, because it listens continuously rather than
+for 75 seconds an hour, but it needs a machine that stays on. See `odyssey/README.md`.
+You do not need it to run the tracker — the Pages build above is self-sufficient.
 
 ## Licensing
 

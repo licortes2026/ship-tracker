@@ -6,7 +6,10 @@
 # test, which is not the same as a failure.
 set -u
 HERE="$(cd "$(dirname "$0")" && pwd)"
-ODYSSEY="$(cd "$HERE/../.." && pwd)/odyssey"
+ROOT="$(cd "$HERE/.." && pwd)"
+# Inside the repo when published, beside it in the development directory.
+ODYSSEY="$ROOT/odyssey"
+[ -f "$ODYSSEY/server.js" ] || ODYSSEY="$(cd "$ROOT/.." && pwd)/odyssey"
 if [ ! -f "$ODYSSEY/server.js" ]; then
   echo "10-11. Server endpoints and caching"
   echo "   - server build not present at $ODYSSEY, skipped"

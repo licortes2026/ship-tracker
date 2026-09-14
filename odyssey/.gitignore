@@ -1,0 +1,8 @@
+# Never commit these
+.aisstream-key
+data/
+node_modules/
+package-lock.json
+start.command
+.DS_Store
+*.log
