@@ -36,8 +36,16 @@
   .disclaimer p{margin:0 0 7px}
   .disclaimer p:last-child{margin:0}
 
-  .mapcard{border:1.5px solid var(--ink);background:var(--sea-deep);overflow:hidden}
-  .stage{position:relative;height:56vh;min-height:320px;touch-action:none}
+  /* The chart is square, and never taller than it has to be. Sizing the card by
+     the shorter of the column width and the viewport height keeps page content
+     visible above and below it, which matters because the stage takes the touch
+     for pan and zoom: a chart that filled the screen left nowhere to scroll. */
+  .mapcard{border:1.5px solid var(--ink);background:var(--sea-deep);overflow:hidden;
+           width:min(100%,max(320px,56vh));margin:0 auto}
+  .stage{position:relative;aspect-ratio:1/1;touch-action:none}
+  @supports not (aspect-ratio:1/1){
+    .stage{height:56vh;min-height:320px}
+  }
   svg{display:block;width:100%;height:100%;cursor:grab}
   svg.dragging{cursor:grabbing}
   .readout{position:absolute;left:8px;bottom:8px;background:rgba(240,231,209,.92);
