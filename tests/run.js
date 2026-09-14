@@ -35,6 +35,18 @@ for (const [name, f] of Object.entries(BUILDS)){
   ok(`${name}: personal note present`, /follow your students' adventure/.test(h));
   ok(`${name}: outbound links open safely`,
      (h.match(/target="_blank"/g)||[]).length === (h.match(/rel="noopener"/g)||[]).length);
+
+  // The build stamp is bumped by hand, so the thing worth guarding is that its two
+  // copies never disagree: a footer saying one version and a meta saying another is
+  // worse than no stamp at all.
+  const metaBuild = (h.match(/<meta name="build" content="([^"]+)"/) || [])[1];
+  const footBuild = (h.match(/<p class="build">([^<]+)<\/p>/) || [])[1];
+  ok(`${name}: build stamp present`, !!metaBuild && !!footBuild);
+  ok(`${name}: build stamp agrees with itself`, metaBuild === footBuild,
+     `meta ${metaBuild} vs footer ${footBuild}`);
+  ok(`${name}: build stamp is versioned and timestamped`,
+     /^v\d+\.\d+ · built \d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} UTC$/.test(footBuild || ""),
+     footBuild);
 }
 {
   if (BUILDS.standalone){

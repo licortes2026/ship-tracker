@@ -14,6 +14,7 @@
 <meta property="og:url" content="https://licortes2026.github.io/ship-tracker/">
 <meta name="description" content="Unofficial personal tracker for the MV World Odyssey, Fall 2026 voyage. Not affiliated with Semester at Sea or the Institute for Shipboard Education. Not for navigation.">
 <meta name="theme-color" content="#0E2C38">
+<meta name="build" content="v1.0 · built 2026-09-14 11:53:44 UTC">
 <style>
   :root{
     --sea:#D4E6EE; --sea-deep:#BCD8E3; --land:#F0E7D1; --ink:#0E2C38;
@@ -36,6 +37,7 @@
               font-size:11.5px;line-height:1.55;color:var(--ink-soft)}
   .disclaimer p{margin:0 0 7px}
   .disclaimer p:last-child{margin:0}
+  .build{font-variant-numeric:tabular-nums;opacity:.7;margin-top:9px !important}
 
   /* The chart is square, and never taller than it has to be. Sizing the card by
      the shorter of the column width and the viewport height keeps page content
@@ -243,6 +245,10 @@
     <a href="https://github.com/licortes2026/ship-tracker" target="_blank" rel="noopener">github.com/licortes2026/ship-tracker</a>,
     improve it, run your own. The licence grants no trademark rights and no warranty of any kind.</p>
     <p>MV World Odyssey · MMSI 311000410 · IMO 9141807 · call sign C6BZ6 · flag Bahamas.</p>
+    <!-- Bumped by hand on every change to this page. UTC, so it never shifts with
+         whoever is reading it. The same string sits in <meta name="build">, and the
+         test battery checks the two agree, which is what stops it going stale. -->
+    <p class="build">v1.0 · built 2026-09-14 11:53:44 UTC</p>
   </div>
 </div>
 
