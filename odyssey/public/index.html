@@ -3,7 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Semester at Sea - World Odyssey - Fall 2026</title>
+<title>UNOFFICIAL "WORLD ODYSSEY" TRACKER SEMESTER AT SEA FALL 2026</title>
+<!-- Link previews show only a title and a domain, so the word UNOFFICIAL has to be
+     carried there too. og:* is what iMessage, WhatsApp and Slack prefer. -->
+<meta property="og:title" content="UNOFFICIAL &quot;WORLD ODYSSEY&quot; TRACKER SEMESTER AT SEA FALL 2026">
+<meta property="og:description" content="Unofficial personal tracker for the MV World Odyssey, Fall 2026 voyage. Not affiliated with Semester at Sea or the Institute for Shipboard Education. Not for navigation.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://licortes2026.github.io/ship-tracker/">
+<meta name="description" content="Unofficial personal tracker for the MV World Odyssey, Fall 2026 voyage. Not affiliated with Semester at Sea or the Institute for Shipboard Education. Not for navigation.">
 <meta name="theme-color" content="#0E2C38">
 <style>
   :root{
@@ -106,14 +113,16 @@
 <div class="wrap">
 
   <header>
-    <svg class="wordmark" viewBox="0 0 1000 196" preserveAspectRatio="xMidYMid meet" role="img"
-         aria-label="Semester at Sea. Unofficial World Odyssey tracker, Fall 2026.">
-      <text x="500" y="124" text-anchor="middle" textLength="1000" lengthAdjust="spacingAndGlyphs"
-            font-family="Iowan Old Style, Palatino Linotype, Palatino, Georgia, serif"
-            font-style="italic" font-size="142" fill="#0E2C38">Semester at Sea</text>
-      <text x="500" y="180" text-anchor="middle" textLength="1000" lengthAdjust="spacing"
+    <svg class="wordmark" viewBox="0 0 1000 100" preserveAspectRatio="xMidYMid meet" role="img"
+         aria-label="Unofficial World Odyssey tracker. Semester at Sea, Fall 2026.">
+      <text x="500" y="40" text-anchor="middle" textLength="1000" lengthAdjust="spacing"
+            data-adjust="spacing"
             font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif"
-            font-size="33" font-weight="500" fill="#4A6B77">UNOFFICIAL WORLD ODYSSEY TRACKER FALL 2026</text>
+            font-size="33" font-weight="500" fill="#4A6B77">UNOFFICIAL &ldquo;WORLD ODYSSEY&rdquo; TRACKER</text>
+      <text x="500" y="88" text-anchor="middle" textLength="1000" lengthAdjust="spacing"
+            data-adjust="spacing"
+            font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif"
+            font-size="33" font-weight="500" fill="#4A6B77">SEMESTER AT SEA FALL 2026</text>
     </svg>
     <div class="note-personal">
       Open source project developed by
@@ -1010,12 +1019,14 @@ function fitWordmark(){
     try{ natural=t.getComputedTextLength(); }catch(e){}
     if(natural>0){
       // Size the type so it very nearly fills on its own, whatever font actually loaded.
+      // Cap the growth, or a short line balloons into a banner.
       var scaled=base*(W/natural);
-      if(i===0) t.setAttribute("font-size",scaled.toFixed(2));
-      else t.setAttribute("font-size",Math.min(scaled,base*1.25).toFixed(2));
+      t.setAttribute("font-size",Math.min(scaled,base*1.25).toFixed(2));
     }
     t.setAttribute("textLength",W);
-    t.setAttribute("lengthAdjust",i===0?"spacingAndGlyphs":"spacing");
+    // Letter-spacing only, unless a line asks otherwise. Stretching the glyphs
+    // themselves was fine for the old italic display line and distorts these.
+    t.setAttribute("lengthAdjust",t.getAttribute("data-adjust")||"spacing");
   }
   // Re-cut the viewBox around whatever the type actually measures, so nothing clips.
   try{
