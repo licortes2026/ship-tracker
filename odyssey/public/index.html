@@ -14,7 +14,7 @@
 <meta property="og:url" content="https://licortes2026.github.io/ship-tracker/">
 <meta name="description" content="Unofficial personal tracker for the MV World Odyssey, Fall 2026 voyage. Not affiliated with Semester at Sea or the Institute for Shipboard Education. Not for navigation.">
 <meta name="theme-color" content="#0E2C38">
-<meta name="build" content="v1.0 · built 2026-09-14 11:53:44 UTC">
+<meta name="build" content="v1.1 · built 2026-09-14 13:20:55 UTC">
 <style>
   :root{
     --sea:#D4E6EE; --sea-deep:#BCD8E3; --land:#F0E7D1; --ink:#0E2C38;
@@ -215,7 +215,7 @@
 
   <div class="legend">
     <span><i class="k-fix"></i>AIS fix</span>
-    <span><i class="k-est"></i>Estimated between fixes</span>
+    <span><i class="k-est"></i>Estimated since last fix</span>
     <span><i class="k-plan"></i>Planned route</span>
     <span><i class="k-dot"></i>AIS position report</span>
   </div>
@@ -248,7 +248,7 @@
     <!-- Bumped by hand on every change to this page. UTC, so it never shifts with
          whoever is reading it. The same string sits in <meta name="build">, and the
          test battery checks the two agree, which is what stops it going stale. -->
-    <p class="build">v1.0 · built 2026-09-14 11:53:44 UTC</p>
+    <p class="build">v1.1 · built 2026-09-14 13:20:55 UTC</p>
   </div>
 </div>
 
@@ -550,19 +550,22 @@ function buildTrack(){
     if(pts[i]._s===undefined) pts[i]._s=projectRoute(pts[i].lat,pts[i].lon).s;
   }
 
+  // Reported positions, joined to each other and to nothing else. Gaps between
+  // fixes are NOT filled in.
+  //
+  // They used to be. An hourly estimate was inserted for any gap over 90 minutes,
+  // and its position came from routePoint() — a point on the *planned* route. She
+  // sails west of that route, so the infill left a fix, jumped east onto the
+  // planned line, ran along it, then jumped back west to the next fix. That drew a
+  // sawtooth she never sailed, and it was the most prominent thing on the chart.
+  //
+  // Interpolating along the plan between two known positions was never a real
+  // estimate of where she went; it was the timetable wearing the track's clothes.
+  // AIS is the only source of truth for where she has been, so the line now runs
+  // fix to fix and the gaps simply read as gaps.
   var out=[];
   for(i=0;i<pts.length;i++){
     out.push({lat:pts[i].lat,lon:pts[i].lon,t:pts[i].t,sog:pts[i].sog,cog:pts[i].cog,est:false});
-    if(i<pts.length-1){
-      var a=pts[i],b=pts[i+1],gap=b.t-a.t;
-      if(gap>EST_STEP*1.5){
-        var n=Math.min(500,Math.round(gap/EST_STEP));
-        for(k=1;k<n;k++){
-          var f=k/n;
-          out.push({s:a._s+(b._s-a._s)*f,t:a.t+gap*f,est:true});
-        }
-      }
-    }
   }
 
   var now=Date.now();

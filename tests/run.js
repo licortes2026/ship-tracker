@@ -175,6 +175,27 @@ const now = Date.now();
   ok("marker is an AIS fix", B.T.getShipInfo().source === "AIS");
 }
 {
+  // A wide gap between two reported fixes joins them directly and is never filled
+  // in. The old code inserted hourly estimates taken from the planned route, which
+  // drew a sawtooth between the fix and the plan and back. Gaps read as gaps now.
+  const B = load(AIS_BUILD);
+  const t0 = now - 30*3600000;
+  B.T.setAis([
+    { t: t0,                 lat: 45.0, lon: -9.0,  sog: 12, cog: 200 },
+    { t: t0 + 26*3600000,    lat: 41.0, lon: -11.0, sog: 12, cog: 200 }
+  ]);
+  B.T.draw();
+  const solid = ((B.els.real.attrs.d || "").match(/M/g) || []).length;
+  ok("a 26 hour gap joins the two fixes directly", solid === 1, "solid " + solid);
+  ok("nothing is interpolated into the gap",
+     (B.els.fixdots._c() || []).length === 2, (B.els.fixdots._c() || []).length + " dots");
+  // The track must not wander onto the planned route: every drawn vertex has to be
+  // one of the two reported positions.
+  const lons = (B.els.real.attrs.d || "").match(/-?\d+\.\d+/g) || [];
+  ok("the gap is not drawn via the planned route",
+     lons.every(v => ["-9.000","-11.000","-45.000","-41.000"].includes(v)), lons.join(" "));
+}
+{
   const B = load(AIS_BUILD);
   B.T.setAis([{ t: now - 50*3600000, lat: 40.0, lon: -10.0, sog: 12, cog: 190 }]);
   B.T.draw();

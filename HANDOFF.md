@@ -116,8 +116,8 @@ Key is a repo secret named `AISSTREAM_API_KEY`. Never commit it.
   waypoints so it never crosses land.
 * **Solid ink line** — schedule progress, how far the timetable says she should have got.
 * **Solid magenta line and dots** — actual AIS positions.
-* **Dotted blue line** — dead reckoning. Fills gaps between fixes over 90 minutes, and
-  extrapolates forward from the last fix to now at her last reported speed.
+* **Dotted blue line** — dead reckoning, forward from the last fix to now at her last
+  reported speed. Only ever ahead of the newest fix, never between two of them.
 * **Marker** — magenta ring when the last position is real, blue when estimated.
 
 Tapping a port opens a card with arrival, on-ship time, days alongside, and status.
@@ -139,6 +139,19 @@ why the page works offline and on bad ship wifi.
 someone actually reported a position. The user asked at one point to show estimates "as
 real"; they are drawn as a continuous line but not labelled as reports, because passing
 dead reckoning off as a fix is exactly the failure this page was built to avoid.
+
+**Gaps between fixes are never filled in. AIS is the only source of truth for where she
+has been.** Removed 2026-09-14. `buildTrack` used to insert an hourly estimate into any
+gap over 90 minutes, positioned with `routePoint()` — a point on the *planned* route. She
+sails west of that route, so the track left a fix, jumped east onto the planned line, ran
+along it, and jumped back west to the next fix: a sawtooth she never sailed, and the
+loudest thing on the chart. Interpolating along the timetable between two known positions
+was never an estimate of where she went. The track now runs fix to fix and a gap reads as
+a gap. Three tests in section 6 guard it, including one asserting that every drawn vertex
+is a reported coordinate, so nothing can wander back onto the planned route.
+
+Forward extrapolation past the newest fix stays: that is the honest answer to "where is
+she now" when the last report is hours old, and it is clearly the estimate.
 
 **The log is append-only and never pruned.** A full voyage of hourly fixes is about 2,500
 lines and 158KB. Earlier code thinned it; that was solving a problem that does not exist.
