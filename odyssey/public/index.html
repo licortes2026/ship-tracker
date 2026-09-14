@@ -18,6 +18,7 @@
   :root{
     --sea:#D4E6EE; --sea-deep:#BCD8E3; --land:#F0E7D1; --ink:#0E2C38;
     --ink-soft:#4A6B77; --magenta:#B5246B; --hot:#E8202A; --rule:rgba(14,44,56,.22);
+    --veg:#2E4116;
     --serif:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
     --sans:ui-sans-serif,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
   }
@@ -75,15 +76,21 @@
   .popover .t{font-variant-numeric:tabular-nums}
   .popover .s{color:var(--hot);margin-top:4px}
   .popover .z{color:var(--ink-soft);font-size:11px;margin-top:2px}
-  .maptools{display:flex;align-items:center;gap:6px;padding:8px;border-top:1.5px solid var(--ink);
-            background:var(--land);flex-wrap:wrap}
+  .maptools{display:flex;flex-direction:column;gap:6px;padding:8px;
+            border-top:1.5px solid var(--ink);background:var(--land)}
+  .maptools .row{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
   button{font:inherit;font-size:13px;background:transparent;color:var(--ink);border:1px solid var(--rule);
          padding:6px 11px;border-radius:2px;cursor:pointer}
   button:active{background:var(--ink);color:var(--land)}
   button:focus-visible{outline:2px solid var(--magenta);outline-offset:2px}
+  /* The basemap button wears the map's own vegetation green while it is offering
+     satellite, and stays plain while it offers the chart. Cream text: the green is
+     sampled from earth.webp, where dense vegetation sits near #203010, far too
+     dark for the usual ink. Placed after :active, which it has to outrank. */
+  button.offers-sat{background:var(--veg);border-color:var(--veg);color:var(--land)}
+  button.offers-sat:active{background:var(--ink);color:var(--land)}
   .zoom{display:flex;gap:6px}
   .zoom button{width:40px;padding:6px 0;font-size:17px;line-height:1}
-  .spacer{flex:1}
 
   .hero{margin:16px 0 0;border-top:1.5px solid var(--ink);padding-top:13px}
   .miles{font-size:42px;line-height:1;font-variant-numeric:tabular-nums;font-weight:500;color:var(--magenta)}
@@ -166,16 +173,21 @@
       <div class="readout" id="readout"></div>
       <div class="popover" id="popover"></div>
     </div>
+    <!-- Two fixed rows. These used to be one wrapping row, so which buttons
+         landed on which line changed with the viewport width. -->
     <div class="maptools">
-      <span class="zoom">
-        <button id="zout" aria-label="Zoom out">&minus;</button>
-        <button id="zin" aria-label="Zoom in">+</button>
-      </span>
-      <button id="fitall">Whole voyage</button>
-      <button id="fitship">Find ship</button>
-      <span class="spacer"></span>
-      <button id="basemap">Chart</button>
-      <button id="fitleg">This leg</button>
+      <div class="row">
+        <span class="zoom">
+          <button id="zout" aria-label="Zoom out">&minus;</button>
+          <button id="zin" aria-label="Zoom in">+</button>
+        </span>
+        <button id="fitall">Whole voyage</button>
+        <button id="fitleg">This leg</button>
+      </div>
+      <div class="row">
+        <button id="basemap">Chart</button>
+        <button id="fitship">Find ship</button>
+      </div>
     </div>
   </div>
 
@@ -773,7 +785,10 @@ function setBasemap(m){
   basemap=m;
   svg.setAttribute("class", m==="sat" ? "basemap-sat" : "basemap-chart");
   stage.className = "stage " + (m==="sat" ? "basemap-sat" : "basemap-chart");
-  document.getElementById("basemap").textContent = m==="sat" ? "Chart" : "Satellite";
+  var bm=document.getElementById("basemap");
+  bm.textContent = m==="sat" ? "Chart" : "Satellite";
+  // add/remove rather than toggle: the test harness's fake classList has no toggle.
+  if(m==="sat") bm.classList.remove("offers-sat"); else bm.classList.add("offers-sat");
   try{ localStorage.setItem("wo_basemap",m); }catch(e){}
 }
 document.getElementById("basemap").addEventListener("click",function(){
