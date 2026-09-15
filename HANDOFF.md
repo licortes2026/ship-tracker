@@ -1,6 +1,6 @@
 # HANDOFF: MV World Odyssey tracker
 
-Written 2026-09-14, last revised 2026-09-15. Everything below is current as of that date.
+Written 2026-09-14, last revised 2026-09-15 (v1.3). Everything below is current as of that date.
 
 This project was built across one long chat session. This document carries the context
 that would otherwise be lost. Read it before changing anything.
@@ -113,17 +113,39 @@ Key is a repo secret named `AISSTREAM_API_KEY`. Never commit it.
 
 ## 5. What the page draws
 
-* **Dashed ink line** — the planned route. Great-circle segments through hand-placed sea
-  waypoints so it never crosses land.
-* **Solid ink line** — schedule progress, how far the timetable says she should have got.
-* **Solid magenta line and dots** — actual AIS positions. Magenta means reported, always.
-* **Dotted pink line** — the estimate, forward from the newest fix to now. Pink means
-  estimated, always. Only ever ahead of the newest fix, never between two of them.
-* **Marker** — magenta ring on a fresh real fix, pink when the position is estimated.
+**`SPEC_track_rendering.md` is the design of record for everything in this section.**
+Read it before changing any drawing code.
 
-The colour is the meaning: **magenta before, pink after.** The estimate starts exactly
-where the magenta track ends and continues it, so the two read as one line changing
-character at the last known position.
+* **Solid yellow** — history between fixes reported close together. Near-observed.
+* **Dashed yellow** — history across a silence. Reconstructed shape, real endpoints.
+* **Crimson dotted** — the live estimate, newest fix to now. At most one, always at the
+  tip, never left behind in history.
+* **Grey dashed** — the route still ahead, re-originated from her actual position and
+  converging onto the planned waypoints over 60nm.
+* **Dots** — one per AIS reading, only ever on reported positions.
+* **Marker** — yellow ring on a fresh fix, crimson when the position is estimated.
+
+The rule: **consolidated history is yellow and ends on the newest AIS fix; dashed where
+it is reconstruction, solid where it is nearly observation. The only crimson is the live
+estimate.** Added v1.3, 2026-09-15.
+
+**The clock-driven schedule line is gone.** It was drawn from the timetable along the
+planned route, ignoring AIS completely, and was the brightest mark on the chart with no
+legend entry — so it read as her route when it was only the calendar. Whether she is
+ahead or behind schedule is text under the map now, not a line on it.
+
+**Reconstructed spans are warped, not straight.** Between two fixes the shape comes from
+the planned route, corrected by a fade from one fix's offset to the other's, so it starts
+and ends exactly on reported positions and follows the coast's form in between. The warp
+spans exactly one gap and cannot reach past either endpoint, so it can never drag a
+confirmed fix off the place it was reported. A fixed-distance lookback could: 200nm back
+from fix 5 on the Leixões leg reaches 166nm and would have moved fixes 4, 3 and 2.
+
+**Offshore clearance is specified but not enforced.** Reconstructions should sit 50-60nm
+off the coast. Measured on the 134nm gap they run 5.8 to 45.0nm out — close to target
+where her fixes were offshore, too close inshore where a fix was taken near the coast.
+Enforcing it needs point-to-coastline distance against the baked-in Natural Earth
+polygons on every redraw. See the spec.
 
 Tapping a port opens a card with arrival, on-ship time, days alongside, and status.
 Tapping the ship opens speed, course, fix age, next port and miles to run.

@@ -175,25 +175,51 @@ const now = Date.now();
   ok("marker is an AIS fix", B.T.getShipInfo().source === "AIS");
 }
 {
-  // A wide gap between two reported fixes joins them directly and is never filled
-  // in. The old code inserted hourly estimates taken from the planned route, which
-  // drew a sawtooth between the fix and the plan and back. Gaps read as gaps now.
+  // A long silence is reconstructed and drawn DASHED, a densely-reported stretch
+  // SOLID. The shape comes from the planned route, warped so it begins and ends
+  // exactly on the two reported positions: see SPEC_track_rendering.md section 3.
   const B = load(AIS_BUILD);
   const t0 = now - 30*3600000;
-  B.T.setAis([
-    { t: t0,                 lat: 45.0, lon: -9.0,  sog: 12, cog: 200 },
-    { t: t0 + 26*3600000,    lat: 41.0, lon: -11.0, sog: 12, cog: 200 }
-  ]);
+  const A = { t: t0,              lat: 45.0, lon: -9.0,  sog: 12, cog: 200 };
+  const Z = { t: t0 + 26*3600000, lat: 41.0, lon: -11.0, sog: 12, cog: 200 };
+  B.T.setAis([A, Z]);
   B.T.draw();
   const solid = ((B.els.real.attrs.d || "").match(/M/g) || []).length;
-  ok("a 26 hour gap joins the two fixes directly", solid === 1, "solid " + solid);
-  ok("nothing is interpolated into the gap",
+  const dashed = ((B.els.sailed.attrs.d || "").match(/M/g) || []).length;
+  ok("a 26 hour gap is drawn dashed, not solid", dashed >= 1 && solid === 0,
+     "solid " + solid + ", dashed " + dashed);
+  ok("nothing is interpolated as a reported position",
      (B.els.fixdots._c() || []).length === 2, (B.els.fixdots._c() || []).length + " dots");
-  // The track must not wander onto the planned route: every drawn vertex has to be
-  // one of the two reported positions.
-  const lons = (B.els.real.attrs.d || "").match(/-?\d+\.\d+/g) || [];
-  ok("the gap is not drawn via the planned route",
-     lons.every(v => ["-9.000","-11.000","-45.000","-41.000"].includes(v)), lons.join(" "));
+
+  // the warp must land exactly on both fixes, and must not reach past them
+  const span = B.T.warpSpan([A.lat, A.lon], [Z.lat, Z.lon]);
+  ok("the warped span begins exactly on the first fix",
+     B.T.gcDist(span[0], [A.lat, A.lon]) < 0.01, B.T.gcDist(span[0], [A.lat, A.lon]).toFixed(4) + " nm");
+  ok("the warped span ends exactly on the second fix",
+     B.T.gcDist(span[span.length-1], [Z.lat, Z.lon]) < 0.01,
+     B.T.gcDist(span[span.length-1], [Z.lat, Z.lon]).toFixed(4) + " nm");
+  ok("the warped span is a curve, not a straight line", span.length > 4, span.length + " points");
+
+  // close fixes stay solid, and a berth pair stays solid however long the gap
+  const C = load(AIS_BUILD);
+  C.T.setAis([{ t: now - 3600000, lat: 45.0, lon: -9.0, sog: 12, cog: 200 },
+              { t: now,           lat: 44.9, lon: -9.1, sog: 12, cog: 200 }]);
+  C.T.draw();
+  ok("an hourly pair is drawn solid",
+     ((C.els.real.attrs.d || "").match(/M/g) || []).length >= 1,
+     "solid " + ((C.els.real.attrs.d || "").match(/M/g) || []).length);
+  const D = load(AIS_BUILD);
+  D.T.setAis([{ t: now - 3*3600000, lat: 41.178, lon: -8.7025, sog: 0, cog: 0 },
+              { t: now,             lat: 41.178, lon: -8.7025, sog: 0, cog: 0 }]);
+  D.T.draw();
+  ok("a berth pair three hours apart is still solid, she did not move",
+     ((D.els.sailed.attrs.d || "").match(/M/g) || []).length === 0,
+     "dashed " + ((D.els.sailed.attrs.d || "").match(/M/g) || []).length);
+
+  // the route ahead must start exactly where she is
+  const fwd = B.T.forwardPath([Z.lat, Z.lon]);
+  ok("the route ahead starts at her current position",
+     B.T.gcDist(fwd[0], [Z.lat, Z.lon]) < 0.01, B.T.gcDist(fwd[0], [Z.lat, Z.lon]).toFixed(4) + " nm");
 }
 {
   const B = load(AIS_BUILD);

@@ -11,6 +11,7 @@ function load(file, opts){
     `\nglobal.__T={PORTS:PORTS,LEGS:LEGS,TOTAL_NM:TOTAL_NM,ROUTE_OFF:ROUTE_OFF,ROUTE_TOTAL:ROUTE_TOTAL,
       dr:dr,gcDist:gcDist,pointAt:pointAt,routePoint:routePoint,projectRoute:projectRoute,
       buildTrack:buildTrack,realPoints:realPoints,fmtPos:fmtPos,
+      buildHistory:buildHistory,warpSpan:warpSpan,forwardPath:forwardPath,
       draw:drawDynamic,render:render,showPort:showPort,showShip:showShip,clearPort:clearPort,
       setBasemap:setBasemap,zoomBy:zoomBy,applyView:applyView,view:view,fitTo:fitTo,
       stamp:stamp,scheduleSpeed:scheduleSpeed,
