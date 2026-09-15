@@ -14,7 +14,7 @@
 <meta property="og:url" content="https://licortes2026.github.io/ship-tracker/">
 <meta name="description" content="Unofficial personal tracker for the MV World Odyssey, Fall 2026 voyage. Not affiliated with Semester at Sea or the Institute for Shipboard Education. Not for navigation.">
 <meta name="theme-color" content="#0E2C38">
-<meta name="build" content="v1.2 · built 2026-09-15 12:48:08 UTC">
+<meta name="build" content="v1.3-preview · built 2026-09-15 14:11:04 UTC">
 <style>
   :root{
     --sea:#D4E6EE; --sea-deep:#BCD8E3; --land:#F0E7D1; --ink:#0E2C38;
@@ -43,7 +43,6 @@
      the shorter of the column width and the viewport height keeps page content
      visible above and below it, which matters because the stage takes the touch
      for pan and zoom: a chart that filled the screen left nowhere to scroll. */
-  #sailed{display:none}
   .mapcard{border:1.5px solid var(--ink);background:var(--sea-deep);overflow:hidden;
            width:min(100%,max(320px,56vh));margin:0 auto}
   .stage{position:relative;aspect-ratio:1/1;touch-action:none}
@@ -59,17 +58,17 @@
   .basemap-sat #bg{display:none}
   .basemap-sat #graticule path{stroke:#FFFFFF;stroke-opacity:.16}
   .basemap-sat #planned{stroke:#FFFFFF;stroke-opacity:.5}
-  .basemap-sat #sailed{stroke:#FFE24A;stroke-width:3}
+  .basemap-sat #sailed{stroke:#FFE24A}\n  .basemap-sat #real{stroke:#FFE24A}
   .basemap-sat .readout{background:rgba(14,44,56,.88);color:#F0E7D1;border-color:rgba(255,255,255,.3)}
   .basemap-chart #earth{display:none}
   .legend{display:flex;flex-wrap:wrap;gap:14px;margin-top:14px;padding-top:12px;
           border-top:1px solid var(--rule);font-size:12px;color:var(--ink-soft)}
   .legend span{display:flex;align-items:center;gap:6px}
   .legend i{display:block;width:26px;height:0;border-top-width:3px;border-top-style:solid}
-  .legend .k-fix{border-top-color:var(--magenta)}
-  .legend .k-est{border-top-color:var(--pink);border-top-style:dotted;border-top-width:3px}
-  .legend .k-plan{border-top-color:var(--ink);border-top-style:dashed;border-top-width:2px;opacity:.6}
-  .legend .k-dot{width:9px;height:9px;border:0;border-radius:50%;background:var(--magenta)}
+  .legend .k-fix{border-top-color:#C9A227}
+  .legend .k-est{border-top-color:var(--magenta);border-top-style:dotted;border-top-width:3px}
+  .legend .k-histdash{border-top-color:#C9A227;border-top-style:dashed;border-top-width:3px}\n  .legend .k-plan{border-top-color:var(--ink);border-top-style:dashed;border-top-width:2px;opacity:.6}
+  .legend .k-dot{width:9px;height:9px;border:0;border-radius:50%;background:#FFE24A;border:1px solid #7A5B00}
   .popover{position:absolute;z-index:5;background:var(--land);border:2px solid var(--hot);
            padding:9px 11px;max-width:230px;font-size:12.5px;line-height:1.45;
            box-shadow:2px 2px 0 rgba(232,32,42,.22);pointer-events:none;display:none}
@@ -165,10 +164,10 @@
               stroke-linejoin="round" vector-effect="non-scaling-stroke"/>
         <path id="planned" fill="none" stroke="#0E2C38" stroke-opacity="0.5" stroke-width="1.2"
               stroke-dasharray="5 6" vector-effect="non-scaling-stroke"/>
-        <path id="sailed" fill="none" stroke="#0E2C38" stroke-width="2.6" vector-effect="non-scaling-stroke"/>
-        <path id="est" fill="none" stroke="#FF74B1" stroke-width="2.2" stroke-linecap="round"
+        <path id="sailed" fill="none" stroke="#C9A227" stroke-width="2.4" stroke-dasharray="7 5" vector-effect="non-scaling-stroke"/>
+        <path id="est" fill="none" stroke="#B5246B" stroke-width="2.2" stroke-linecap="round"
               stroke-dasharray="0.1 5" vector-effect="non-scaling-stroke"/>
-        <path id="real" fill="none" stroke="#B5246B" stroke-width="2.4" vector-effect="non-scaling-stroke"/>
+        <path id="real" fill="none" stroke="#C9A227" stroke-width="2.8" vector-effect="non-scaling-stroke"/>
         <g id="portdots"></g>
         <g id="fixdots"></g>
         <g id="ship"></g>
@@ -215,8 +214,8 @@
   <ol class="ports" id="ports"></ol>
 
   <div class="legend">
-    <span><i class="k-fix"></i>Actual track, AIS</span>
-    <span><i class="k-est"></i>Estimated, since last AIS</span>
+    <span><i class="k-fix"></i>Track, reported</span>\n    <span><i class="k-histdash"></i>Track, reconstructed</span>
+    <span><i class="k-est"></i>Estimated position now</span>
     <span><i class="k-plan"></i>Planned route</span>
     <span><i class="k-dot"></i>AIS position report</span>
   </div>
@@ -249,7 +248,7 @@
     <!-- Bumped by hand on every change to this page. UTC, so it never shifts with
          whoever is reading it. The same string sits in <meta name="build">, and the
          test battery checks the two agree, which is what stops it going stale. -->
-    <p class="build">v1.2 · built 2026-09-15 12:48:08 UTC</p>
+    <p class="build">v1.3-preview · built 2026-09-15 14:11:04 UTC</p>
   </div>
 </div>
 
@@ -565,37 +564,13 @@ function buildTrack(){
   var pts=realPoints();
   var i,k;
 
-  // Reported positions, joined to each other and to nothing else. Gaps between
-  // fixes are NOT filled in.
-  //
-  // They used to be. An hourly estimate was inserted for any gap over 90 minutes,
-  // and its position came from routePoint() — a point on the *planned* route. She
-  // sails west of that route, so the infill left a fix, jumped east onto the
-  // planned line, ran along it, then jumped back west to the next fix. That drew a
-  // sawtooth she never sailed, and it was the most prominent thing on the chart.
-  //
-  // Interpolating along the plan between two known positions was never a real
-  // estimate of where she went; it was the timetable wearing the track's clothes.
-  // AIS is the only source of truth for where she has been, so the line now runs
-  // fix to fix and the gaps simply read as gaps.
   var out=[];
   for(i=0;i<pts.length;i++){
     out.push({lat:pts[i].lat,lon:pts[i].lon,t:pts[i].t,sog:pts[i].sog,cog:pts[i].cog,est:false});
   }
 
-  // Forward from the newest fix to now. This begins at her actual reported
-  // position, not at a projection of it onto the planned route: the estimate is
-  // the continuation of the magenta track, so it has to start where that track
-  // ends. Getting this wrong drew a line sideways from the last fix onto the
-  // timetable's line, which is what it used to do.
-  //
-  // Direction is the great circle from where she is to the next port. Her last
-  // reported course would serve for an hour and would sail her into Africa over a
-  // five-day silence, since a heading is only true until she alters it. Speed is
-  // her last reported speed, falling back to the timetable's if that is unusable.
-  //
-  // Clamped at the port. If the arithmetic runs her past it, she has arrived, and
-  // saying so is better than drawing her inland.
+  // The live estimate: one run forward from the newest fix to now, and nothing
+  // else. Recomputed every redraw, never stored. See SPEC_track_rendering.md.
   var now=Date.now();
   if(pts.length){
     var last=pts[pts.length-1];
@@ -621,12 +596,73 @@ function buildTrack(){
   return out;
 }
 
+/* ---------- history: the yellow chain ---------- */
 
+// Shape of one span, taken from the planned route and warped so it begins and
+// ends exactly on the two reported positions. Both ends are real, the middle
+// follows the coast's form, and the warp cannot reach past either endpoint, so
+// it can never displace a neighbouring fix.
+function warpSpan(a,b){
+  var sa=projectRoute(a[0],a[1]).s, sb=projectRoute(b[0],b[1]).s;
+  var pa=routePoint(sa), pb=routePoint(sb);
+  var da=[a[0]-pa[0], a[1]-pa[1]], db=[b[0]-pb[0], b[1]-pb[1]];
+  var n=Math.max(1,Math.min(140,Math.round(Math.abs(sb-sa)/8)));
+  var outp=[];
+  for(var k=0;k<=n;k++){
+    var f=k/n, sq=sa+(sb-sa)*f, p=routePoint(sq);
+    outp.push([p[0]+da[0]*(1-f)+db[0]*f, p[1]+da[1]*(1-f)+db[1]*f]);
+  }
+  outp[0]=[a[0],a[1]]; outp[outp.length-1]=[b[0],b[1]];
+  return outp;
+}
+
+// The port she last sailed from, which anchors the start of the chain.
+function departurePortFor(s){
+  var idx=0;
+  for(var i=0;i<ROUTE_OFF.length;i++) if(ROUTE_OFF[i]<=s) idx=i;
+  return PORTS[idx];
+}
+
+// Solid where the two fixes are close together, dashed across a silence.
+function buildHistory(){
+  var pts=realPoints(), solid=[], dash=[];
+  if(!pts.length) return {solid:solid,dash:dash};
+
+  var chain=[], times=[];
+  var p0=departurePortFor(projectRoute(pts[0].lat,pts[0].lon).s);
+  chain.push([p0.lat,p0.lon]); times.push(new Date(p0.dep).getTime());
+  for(var i=0;i<pts.length;i++){ chain.push([pts[i].lat,pts[i].lon]); times.push(pts[i].t); }
+
+  for(i=0;i<chain.length-1;i++){
+    var a=chain[i], b=chain[i+1];
+    var mins=(times[i+1]-times[i])/60000;
+    var moved=gcDist(a,b);
+    var span=warpSpan(a,b);
+    if(mins<=90||moved<1) solid.push(span); else dash.push(span);
+  }
+  return {solid:solid,dash:dash};
+}
+
+// The route ahead, starting exactly where she is and converging onto the planned
+// waypoints over ~60nm, so it rejoins the hand-placed line rather than cutting
+// across a headland on a direct bearing to the port.
+function forwardPath(from){
+  var s0=projectRoute(from[0],from[1]).s;
+  var p0=routePoint(s0);
+  var d=[from[0]-p0[0], from[1]-p0[1]];
+  var BLEND=60, outp=[], n=260;
+  for(var k=0;k<=n;k++){
+    var sq=s0+(ROUTE_TOTAL-s0)*(k/n), p=routePoint(sq);
+    var w=Math.max(0,1-(sq-s0)/BLEND);
+    outp.push([p[0]+d[0]*w, p[1]+d[1]*w]);
+  }
+  outp[0]=[from[0],from[1]];
+  return outp;
+}
 
 function drawStatic(){
-  var all=[],pd="";
-  LEGS.forEach(function(l){ pd+=toPath(l.line); all=all.concat(l.line); });
-  document.getElementById("planned").setAttribute("d",pd);
+  var all=[];
+  LEGS.forEach(function(l){ all=all.concat(l.line); });
   var g=document.getElementById("portdots"),html="";
   PORTS.forEach(function(p,i){
     html+='<circle data-port="'+i+'" data-r="16" cx="'+p.lon+'" cy="'+(-p.lat)+'" r="1" '+
@@ -640,34 +676,35 @@ function drawStatic(){
 
 function drawDynamic(){
   var s=dr(new Date());
-  var done=[],i;
-  for(i=0;i<s.legIndex;i++) done=done.concat(LEGS[i].line);
-  if(LEGS[s.legIndex]) done=done.concat(sliceTo(LEGS[s.legIndex],s.f));
-  document.getElementById("sailed").setAttribute("d",toPath(done));
+  var i;
   legPts=LEGS[s.legIndex]?LEGS[s.legIndex].line:[];
+
+  // Yellow history: solid between fixes reported close together, dashed across a
+  // silence. #real carries the solid spans, #sailed the dashed ones. The old
+  // clock-driven schedule line is gone; it ignored AIS entirely.
+  var hist=buildHistory();
+  document.getElementById("real").setAttribute("d",hist.solid.map(toPath).join(""));
+  document.getElementById("sailed").setAttribute("d",hist.dash.map(toPath).join(""));
 
   var trk=buildTrack();
   window.__trk=trk;
 
-  // Two lines from one sequence: solid where both ends are reported,
-  // dotted where either end is dead reckoning.
-  var dReal="",dEst="",started=false;
+  // Crimson is only ever the live estimate, from the newest fix to now.
+  var dEst="";
   for(i=1;i<trk.length;i++){
     var a=trk[i-1],b=trk[i];
-    var seg="M"+a.lon.toFixed(3)+" "+(-a.lat).toFixed(3)+
-            "L"+b.lon.toFixed(3)+" "+(-b.lat).toFixed(3);
-    if(a.est||b.est) dEst+=seg; else dReal+=seg;
-    started=true;
+    if(!a.est&&!b.est) continue;
+    dEst+="M"+a.lon.toFixed(3)+" "+(-a.lat).toFixed(3)+
+          "L"+b.lon.toFixed(3)+" "+(-b.lat).toFixed(3);
   }
-  document.getElementById("real").setAttribute("d",started?dReal:"");
-  document.getElementById("est").setAttribute("d",started?dEst:"");
+  document.getElementById("est").setAttribute("d",dEst);
 
   // Dots only for positions someone actually reported.
   var fd="";
   for(i=0;i<trk.length;i++){
     if(trk[i].est) continue;
     fd+='<circle data-r="2" cx="'+trk[i].lon+'" cy="'+(-trk[i].lat)+
-        '" r="1" fill="#B5246B" stroke="#B5246B" '+
+        '" r="1" fill="#FFE24A" stroke="#7A5B00" '+
         'stroke-width="1" vector-effect="non-scaling-stroke"/>';
   }
   document.getElementById("fixdots").innerHTML=fd;
@@ -691,13 +728,16 @@ function drawDynamic(){
               est:!!lastP.est||stale,dr:!!lastP.drSpeed};
   }
 
-  var ring=shipInfo.est?"#FF74B1":"#B5246B";   // pink ahead, magenta on a real fix
+  var ring=shipInfo.est?"#B5246B":"#FFE24A";   // pink ahead, magenta on a real fix
   document.getElementById("ship").innerHTML=
     '<circle data-ship="1" data-r="18" cx="'+shipPos[1]+'" cy="'+(-shipPos[0])+
     '" r="1" fill="transparent" stroke="none" style="cursor:pointer"/>'+
     '<circle data-ship="1" data-r="7" cx="'+shipPos[1]+'" cy="'+(-shipPos[0])+
     '" r="1" fill="#fff" stroke="'+ring+'" stroke-width="2.5" '+
     'vector-effect="non-scaling-stroke" style="cursor:pointer"/>';
+
+  // Route ahead, re-originated from where she actually is.
+  document.getElementById("planned").setAttribute("d",toPath(forwardPath(shipPos)));
 
   document.getElementById("readout").textContent=
     "World Odyssey \u00b7 "+fmtPos(shipPos)+" \u00b7 "+shipInfo.source;
