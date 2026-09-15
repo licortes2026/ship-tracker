@@ -1,21 +1,22 @@
 # SPEC: how the chart draws where she has been and where she is going
 
-Status: **drafted 2026-09-15, implemented as a local preview, not pushed.**
+Status: **live as of 2026-09-15, build v1.4.**
 Supersedes the drawing rules in HANDOFF section 5.
 
 ---
 
 ## 1. The rule in one line
 
-Consolidated history is yellow and ends on the newest AIS fix. A reconstructed
-stretch is dashed, a densely-reported stretch is solid. The only crimson on the
+Consolidated history is yellow and ends on the newest AIS fix. It is solid where
+the clock leaves her no room to have deviated from the direct line, dashed where
+it is genuinely a reconstruction. The only crimson on the
 chart is a single live estimate at the tip, and it never survives into history.
 
 ## 2. What each mark means
 
 | Mark | Meaning | Element |
 |---|---|---|
-| Solid yellow | History between fixes reported close together. Near-observed. | `#real` |
+| Solid yellow | History whose trajectory is determined: she had no room to deviate. | `#real` |
 | Dashed yellow | History across a silence. Reconstructed shape, real endpoints. | `#sailed` |
 | Crimson dotted | The live estimate, last fix to now. At most one, always terminal. | `#est` |
 | Grey dashed | Route still ahead, re-originated from her actual position. | `#planned` |
@@ -39,23 +40,63 @@ The departure port anchors the start because a departure is a known position.
 The newest fix anchors the end. Every joint in the chain is a position somebody
 actually reported.
 
-### 3.1 Solid or dashed
+### 3.1 Solid or dashed: how far could she possibly have strayed?
 
-A span is **solid** when the two fixes are close enough that little happened
-between them, otherwise **dashed**:
+Elapsed time does not decide this. **Elapsed time against speed does.**
+
+Take the two fixes as the foci of an ellipse whose major axis is the distance her
+reported speed allows in the time. Every path she could have sailed lies inside
+it, so the semi-minor axis is the furthest she could possibly be from the direct
+line:
 
 ```
-solid  if  gap <= 90 minutes  OR  moved < 1 nm
-dashed otherwise
+budget   = average reported speed x elapsed hours
+straight = great-circle distance between the fixes
+stray    = budget <= straight ? 0 : sqrt(budget^2 - straight^2) / 2
+
+berth          if straight < 1 nm                     -> solid, straight
+reconstructed  if route distance > straight x 1.25     -> dashed, warped
+reconstructed  if no usable reported speed             -> dashed, warped
+determined     if stray <= 10 nm                       -> solid, straight
+reconstructed  otherwise                               -> dashed, warped
 ```
 
-The distance clause matters at a berth: six hourly readings from the same
-bollard are two hours apart but she did not move, so there is nothing to
-reconstruct and the line should not imply there was.
+Ten miles of possible wander is a pixel or two at chart scale, so a straight
+line is honest. Measured on the Leixões leg:
 
-On the Leixões leg this yields dashed for the 4d 4h port-to-first-fix span, the
-9.2h and 16.1h silences and the 2h berth gap, solid for the seven spans of an
-hour or less.
+| Span | Elapsed | Straight | Could stray | Kind |
+|---|---|---|---|---|
+| port -> 1 | 107h | 705.8 nm | **243.3 nm** | reconstructed |
+| 1 -> 2 | 9.16h | 73.3 nm | 0.0 nm | determined |
+| 2 -> 3 | 2.74h | 22.9 nm | 0.0 nm | determined |
+| 3 -> 4 | 1.29h | 9.8 nm | 1.5 nm | determined |
+| 4 -> 5 | 16.06h | 133.8 nm | **0.0 nm** | determined |
+| 5 -> 6 | 1.09h | 6.0 nm | 2.1 nm | determined |
+| 6 -> 12 | hourly | < 0.5 nm | - | berth |
+
+**The 16-hour silence is determined, not a guess.** 133.8 nm in 16.06 hours needs
+8.33 kt and she reported 8.3 and 8.2 either side: the straight line consumed
+every mile available, so she cannot have deviated. The earlier 90-minute rule
+called that a reconstruction, which was wrong, and drew it as a curve.
+
+A ratio of speeds cannot express this. An hourly fix at 13 kt that advanced 6 nm
+has slack in ratio terms but could only have strayed 5.7 nm, which is nothing.
+
+**Why the route-distance clause.** When the direct line crosses land the real
+distance is longer than the straight line and the stray figure is meaningless.
+The planned route was drawn around land, so a route distance much longer than
+the straight line reveals the shortcut. It is a cheap safety net rather than a
+land test: the IJmuiden run is caught by its 243 nm of stray anyway.
+
+### 3.1a A reconstruction may not exceed her speed
+
+A warped span follows the planned route's shape, which can add distance she did
+not have. On the real 16-hour gap the warp drew **143.6 nm against a 132.5 nm
+budget** — eleven miles of voyage that could not have happened.
+
+Reconstructions are now blended toward the straight line until they fit the
+budget. The blend cannot move either endpoint, because the warp and the straight
+line already agree at both ends.
 
 ### 3.2 The shape of a span
 

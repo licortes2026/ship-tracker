@@ -116,7 +116,9 @@ Key is a repo secret named `AISSTREAM_API_KEY`. Never commit it.
 **`SPEC_track_rendering.md` is the design of record for everything in this section.**
 Read it before changing any drawing code.
 
-* **Solid yellow** — history between fixes reported close together. Near-observed.
+* **Solid yellow** — history where the trajectory is determined: the straight line
+  between two fixes consumed every mile her speed allowed, so she had no room to
+  deviate. Time alone does not decide this; time against speed does.
 * **Dashed yellow** — history across a silence. Reconstructed shape, real endpoints.
 * **Crimson dotted** — the live estimate, newest fix to now. At most one, always at the
   tip, never left behind in history.
@@ -133,6 +135,18 @@ estimate.** Added v1.3, 2026-09-15.
 planned route, ignoring AIS completely, and was the brightest mark on the chart with no
 legend entry — so it read as her route when it was only the calendar. Whether she is
 ahead or behind schedule is text under the map now, not a line on it.
+
+**Solid or dashed is decided by how far she could possibly have strayed**, not by
+elapsed time. With the two fixes as foci and her distance budget as the major axis, the
+ellipse's semi-minor axis is the furthest she could be from the direct line; under 10nm
+it is drawn straight. The 16-hour silence on the Leixões leg covers 133.8nm needing
+8.33kt against 8.3 reported, so stray is zero and it is solid. The earlier 90-minute rule
+called it a guess and drew a curve. Changed v1.4, 2026-09-15.
+
+**A reconstruction may never be longer than her speed allows.** The warp follows the
+planned route and can add distance: on that same gap it drew 143.6nm against a 132.5nm
+budget. Reconstructions are blended toward the straight line until they fit, which cannot
+move the endpoints since warp and straight line agree there.
 
 **Reconstructed spans are warped, not straight.** Between two fixes the shape comes from
 the planned route, corrected by a fade from one fix's offset to the other's, so it starts

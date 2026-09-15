@@ -220,6 +220,56 @@ const now = Date.now();
   const fwd = B.T.forwardPath([Z.lat, Z.lon]);
   ok("the route ahead starts at her current position",
      B.T.gcDist(fwd[0], [Z.lat, Z.lon]) < 0.01, B.T.gcDist(fwd[0], [Z.lat, Z.lon]).toFixed(4) + " nm");
+
+  // ---- the span test is physics, not elapsed time ----
+  // If the straight line already eats every mile her speed allows, she had no
+  // time to deviate and the trajectory is determined, however long the silence.
+  const t1 = now - 20*3600000, t2 = now;
+  const offA = [43.2302, -10.0980], offB = [41.2114, -8.8260];
+  const hrs = 20, straightNm = B.T.gcDist(offA, offB);
+  const tightV = straightNm / hrs;                     // exactly enough speed
+  const looseV = tightV * 3;                           // miles to spare
+  ok("no slack means the trajectory is determined",
+     B.T.spanKind(offA, offB, t1, t2, tightV, tightV) === "determined",
+     B.T.spanKind(offA, offB, t1, t2, tightV, tightV));
+  ok("plenty of slack means it is a reconstruction",
+     B.T.spanKind(offA, offB, t1, t2, looseV, looseV) === "reconstructed",
+     B.T.spanKind(offA, offB, t1, t2, looseV, looseV));
+  ok("a 20 hour silence can still be determined, time alone does not decide",
+     B.T.spanKind(offA, offB, t1, t2, tightV, tightV) !== "reconstructed");
+
+  // A reconstruction must never depict a voyage she could not have sailed. The
+  // warp follows the planned route and can add distance: on the real 16 hour gap
+  // it drew 143.6nm against a 132.5nm budget before this guard existed.
+  const budget = B.T.spanBudget(looseV, looseV, hrs) * 0.35;
+  const clamped = B.T.spanPath(offA, offB, budget);
+  ok("a reconstruction is clamped to what her speed allows",
+     B.T.pathLen(clamped) <= budget * 1.01,
+     B.T.pathLen(clamped).toFixed(1) + " nm drawn, " + budget.toFixed(1) + " nm budget");
+  ok("clamping does not move the endpoints",
+     B.T.gcDist(clamped[0], offA) < 0.01 &&
+     B.T.gcDist(clamped[clamped.length-1], offB) < 0.01);
+
+  // When the direct line crosses land the test is invalid: the real distance is
+  // longer than the straight line, so no-slack would be a false positive. The
+  // planned route goes around land, so a much longer route distance reveals it.
+  // Leg one is the live case: four days from IJmuiden with no reading, and the
+  // direct line crosses England and Brittany. She had ~150nm of spare distance
+  // over those 107 hours, so she could have strayed far off the direct line.
+  const ijm = [52.46, 4.58], firstFix = [44.8015, -8.9818];
+  ok("the unrecorded run from IJmuiden stays a reconstruction",
+     B.T.spanKind(ijm, firstFix, now - 107*3600000, now, 8, 8) === "reconstructed",
+     B.T.spanKind(ijm, firstFix, now - 107*3600000, now, 8, 8));
+
+  // a determined span is drawn as the straight line, not a curve
+  const E = load(AIS_BUILD);
+  E.T.setAis([{ t: t1, lat: offA[0], lon: offA[1], sog: tightV, cog: 200 },
+              { t: t2, lat: offB[0], lon: offB[1], sog: tightV, cog: 200 }]);
+  E.T.draw();
+  const det = E.T.buildHistory().solid.filter(sp => B.T.gcDist(sp[0], offA) < 0.01)[0];
+  ok("a determined span is drawn at the straight-line distance",
+     !!det && Math.abs(E.T.pathLen(det) - straightNm) < 0.5,
+     det ? E.T.pathLen(det).toFixed(1) + " nm vs " + straightNm.toFixed(1) : "not found");
 }
 {
   const B = load(AIS_BUILD);

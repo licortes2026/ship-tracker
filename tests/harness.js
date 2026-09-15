@@ -12,6 +12,7 @@ function load(file, opts){
       dr:dr,gcDist:gcDist,pointAt:pointAt,routePoint:routePoint,projectRoute:projectRoute,
       buildTrack:buildTrack,realPoints:realPoints,fmtPos:fmtPos,
       buildHistory:buildHistory,warpSpan:warpSpan,forwardPath:forwardPath,
+      spanKind:spanKind,spanPath:spanPath,spanBudget:spanBudget,pathLen:pathLen,
       draw:drawDynamic,render:render,showPort:showPort,showShip:showShip,clearPort:clearPort,
       setBasemap:setBasemap,zoomBy:zoomBy,applyView:applyView,view:view,fitTo:fitTo,
       stamp:stamp,scheduleSpeed:scheduleSpeed,

@@ -14,7 +14,7 @@
 <meta property="og:url" content="https://licortes2026.github.io/ship-tracker/">
 <meta name="description" content="Unofficial personal tracker for the MV World Odyssey, Fall 2026 voyage. Not affiliated with Semester at Sea or the Institute for Shipboard Education. Not for navigation.">
 <meta name="theme-color" content="#0E2C38">
-<meta name="build" content="v1.3 · built 2026-09-15 14:14:02 UTC">
+<meta name="build" content="v1.4 · built 2026-09-15 14:42:48 UTC">
 <style>
   :root{
     --sea:#D4E6EE; --sea-deep:#BCD8E3; --land:#F0E7D1; --ink:#0E2C38;
@@ -248,7 +248,7 @@
     <!-- Bumped by hand on every change to this page. UTC, so it never shifts with
          whoever is reading it. The same string sits in <meta name="build">, and the
          test battery checks the two agree, which is what stops it going stale. -->
-    <p class="build">v1.3 · built 2026-09-15 14:14:02 UTC</p>
+    <p class="build">v1.4 · built 2026-09-15 14:42:48 UTC</p>
   </div>
 </div>
 
@@ -623,22 +623,106 @@ function departurePortFor(s){
   return PORTS[idx];
 }
 
-// Solid where the two fixes are close together, dashed across a silence.
+// Is the trajectory between two fixes knowable, or only guessable?
+//
+// Elapsed time alone does not answer that. Elapsed time against speed does. If
+// the straight line between two fixes already consumes every mile her reported
+// speed allows, she cannot have deviated, because there was no time to: the
+// trajectory is determined by the data rather than inferred. Only when she had
+// spare distance could she have been anywhere in between, and only then is the
+// span a reconstruction.
+//
+// Measured on the Leixões leg, the 16 hour silence covers 133.8nm of straight
+// line in 16.06h. That needs 8.33kt, against 8.3 and 8.2 reported either side.
+// She sailed it straight at cruising speed and the clock proves it, so the
+// earlier 90-minute rule was calling a known trajectory a guess.
+//
+// One trap: when the direct line crosses land, the real distance is longer than
+// the straight line and this test would wrongly call the span determined. The
+// planned route was drawn to go around land, so a route distance much greater
+// than the straight line means the straight line is cutting a corner. IJmuiden
+// to Biscay is exactly that — the direct line crosses England and Brittany.
+var MAX_STRAY_NM=10;   // possible wander we are willing to draw as a straight line
+function usableSpeed(v){ return (v>1&&v<30)?v:0; }
+function spanBudget(va,vb,hrs){
+  var v=usableSpeed(va)+usableSpeed(vb), n=(usableSpeed(va)?1:0)+(usableSpeed(vb)?1:0);
+  return n?(v/n)*hrs:0;
+}
+function spanKind(a,b,ta,tb,va,vb){
+  var straight=gcDist(a,b);
+  if(straight<1) return "berth";
+  var hrs=(tb-ta)/3600000;
+  if(hrs<=0) return "berth";
+  var sa=projectRoute(a[0],a[1]).s, sb=projectRoute(b[0],b[1]).s;
+  if(Math.abs(sb-sa)>straight*1.25) return "reconstructed";
+  var budget=spanBudget(va,vb,hrs);
+  if(!budget) return "reconstructed";
+  // How far off the direct line could she possibly have strayed and still made
+  // both fixes in the time? That is the semi-minor axis of the ellipse of
+  // reachable paths, with the two fixes as foci and her distance budget as the
+  // major axis. Ten miles of possible wander is a pixel or two at chart scale,
+  // so the trajectory is pinned and the straight line is honest. A ratio of
+  // speeds cannot express this: an hourly fix at 13kt that advanced 6nm has
+  // slack in ratio terms but could only have strayed 5.7nm, which is nothing.
+  var stray=budget<=straight?0:Math.sqrt(budget*budget-straight*straight)/2;
+  return stray<=MAX_STRAY_NM ? "determined" : "reconstructed";
+}
+
+// A reconstruction may never be longer than her speed allows in the time.
+// The warp follows the planned route's shape, which can add distance she did not
+// have: on the 16 hour gap it drew 143.6nm against a 132.5nm budget. Blending it
+// toward the straight line shortens it without moving either endpoint, since at
+// f=0 and f=1 the warp and the straight line agree.
+function pathLen(p){ var s=0; for(var i=1;i<p.length;i++) s+=gcDist(p[i-1],p[i]); return s; }
+function spanPath(a,b,budget){
+  var w=warpSpan(a,b);
+  if(!(budget>0)||pathLen(w)<=budget) return w;
+  function blend(m){
+    var o=[];
+    for(var k=0;k<w.length;k++){
+      var f=k/(w.length-1), g=gcPoint(a,b,f);
+      o.push([w[k][0]*m+g[0]*(1-m), w[k][1]*m+g[1]*(1-m)]);
+    }
+    o[0]=[a[0],a[1]]; o[o.length-1]=[b[0],b[1]];
+    return o;
+  }
+  var lo=0, hi=1;
+  for(var it=0;it<12;it++){
+    var mid=(lo+hi)/2;
+    if(pathLen(blend(mid))<=budget) lo=mid; else hi=mid;
+  }
+  return blend(lo);
+}
+
+function straightSpan(a,b){
+  var n=Math.max(1,Math.min(48,Math.round(gcDist(a,b)/8)));
+  var line=[];
+  for(var k=0;k<=n;k++) line.push(gcPoint(a,b,k/n));
+  line[0]=[a[0],a[1]]; line[n]=[b[0],b[1]];
+  return line;
+}
+
+// Solid where the trajectory is determined by position and clock together,
+// dashed where it is genuinely a reconstruction.
 function buildHistory(){
   var pts=realPoints(), solid=[], dash=[];
   if(!pts.length) return {solid:solid,dash:dash};
 
-  var chain=[], times=[];
+  var chain=[], times=[], sogs=[];
   var p0=departurePortFor(projectRoute(pts[0].lat,pts[0].lon).s);
-  chain.push([p0.lat,p0.lon]); times.push(new Date(p0.dep).getTime());
-  for(var i=0;i<pts.length;i++){ chain.push([pts[i].lat,pts[i].lon]); times.push(pts[i].t); }
+  chain.push([p0.lat,p0.lon]); times.push(new Date(p0.dep).getTime()); sogs.push(0);
+  for(var i=0;i<pts.length;i++){
+    chain.push([pts[i].lat,pts[i].lon]); times.push(pts[i].t); sogs.push(pts[i].sog);
+  }
 
   for(i=0;i<chain.length-1;i++){
     var a=chain[i], b=chain[i+1];
-    var mins=(times[i+1]-times[i])/60000;
-    var moved=gcDist(a,b);
-    var span=warpSpan(a,b);
-    if(mins<=90||moved<1) solid.push(span); else dash.push(span);
+    var kind=spanKind(a,b,times[i],times[i+1],sogs[i],sogs[i+1]);
+    if(kind==="reconstructed"){
+      dash.push(spanPath(a,b,spanBudget(sogs[i],sogs[i+1],(times[i+1]-times[i])/3600000)));
+    }else{
+      solid.push(straightSpan(a,b));
+    }
   }
   return {solid:solid,dash:dash};
 }
