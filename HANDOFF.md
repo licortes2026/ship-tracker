@@ -1,6 +1,6 @@
 # HANDOFF: MV World Odyssey tracker
 
-Written 2026-09-14. Everything below is current as of that date.
+Written 2026-09-14, last revised 2026-09-15. Everything below is current as of that date.
 
 This project was built across one long chat session. This document carries the context
 that would otherwise be lost. Read it before changing anything.
@@ -49,7 +49,7 @@ with the server build as a subdirectory:
 
 ```
 .github/workflows/track.yml   hourly cron, listens for AIS, commits the result
-scripts/fetch-position.js     the fetcher. websocket to aisstream, 75s window
+scripts/fetch-position.js     the fetcher. websocket to aisstream, 8 minute window
 docs/index.html               the page
 docs/earth.webp               NASA Blue Marble, 2048x1024, 118KB
 docs/log.jsonl                APPEND ONLY. the permanent record. never prune this
@@ -92,7 +92,8 @@ Licence text does not drift.
 
 1. Cron fires. Checks out, installs `ws`, runs `scripts/fetch-position.js`.
 2. Opens a websocket to `wss://stream.aisstream.io/v0/stream`, filtered to the MMSI.
-3. Listens 75 seconds. Exits early once it has both a position and static data.
+3. Listens eight minutes (`LISTEN_SECONDS`, was 75s) and runs the window out, keeping
+   the last report, so the fix is the freshest available rather than the first heard.
 4. Guards: rejects a fix under 0.3nm from the last one within 45 minutes (same berth),
    rejects a jump over 900nm within an hour (bad data).
 5. Appends one line to `docs/log.jsonl`, rebuilds `track.json` and `position.json` from it.
@@ -115,10 +116,14 @@ Key is a repo secret named `AISSTREAM_API_KEY`. Never commit it.
 * **Dashed ink line** — the planned route. Great-circle segments through hand-placed sea
   waypoints so it never crosses land.
 * **Solid ink line** — schedule progress, how far the timetable says she should have got.
-* **Solid magenta line and dots** — actual AIS positions.
-* **Dotted blue line** — dead reckoning, forward from the last fix to now at her last
-  reported speed. Only ever ahead of the newest fix, never between two of them.
-* **Marker** — magenta ring when the last position is real, blue when estimated.
+* **Solid magenta line and dots** — actual AIS positions. Magenta means reported, always.
+* **Dotted pink line** — the estimate, forward from the newest fix to now. Pink means
+  estimated, always. Only ever ahead of the newest fix, never between two of them.
+* **Marker** — magenta ring on a fresh real fix, pink when the position is estimated.
+
+The colour is the meaning: **magenta before, pink after.** The estimate starts exactly
+where the magenta track ends and continues it, so the two read as one line changing
+character at the last known position.
 
 Tapping a port opens a card with arrival, on-ship time, days alongside, and status.
 Tapping the ship opens speed, course, fix age, next port and miles to run.
@@ -152,6 +157,28 @@ is a reported coordinate, so nothing can wander back onto the planned route.
 
 Forward extrapolation past the newest fix stays: that is the honest answer to "where is
 she now" when the last report is hours old, and it is clearly the estimate.
+
+**The estimate begins at her reported position and heads for the next port.** Fixed
+2026-09-15, and this was the same `routePoint()` bug surviving in the forward case after
+it was removed from the gaps. The estimate was computed as a distance *along the planned
+route* (`last._s + v*k`), so its first point sat on that route rather than on her track,
+and the chart drew a line sideways from her last fix onto the timetable's line. It now
+dead reckons in real coordinates with `gcDest` along the great-circle bearing from her
+position to the next port. Measured from a fix 31.6nm off the planned route: the first
+estimate point lands 7.7nm ahead of her, one hour at 7.7 knots, and 28.8nm away from the
+route point the old code would have used.
+
+Direction is bearing-to-next-port rather than her last reported course. A course is only
+true until she alters it; over a five-day silence on a crossing her last heading would
+sail her into Africa. The run is clamped at the port, because arithmetic that puts her
+past it means she has arrived, and saying so beats drawing her inland.
+
+**A stale fix flags the marker estimated even when no estimate can be drawn.** If her
+last reported speed is unusable and the timetable has her alongside, there is no speed to
+extrapolate with. The marker then stops advancing, and it used to keep the magenta ring
+and the source "AIS", presenting a fix hours old as her current position. Staleness is now
+judged on the age of the newest real fix, independently of whether a movement estimate
+exists. A date-dependent test caught this the day the timetable put her in Leixões.
 
 **The log is append-only and never pruned.** A full voyage of hourly fixes is about 2,500
 lines and 158KB. Earlier code thinned it; that was solving a problem that does not exist.

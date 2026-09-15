@@ -14,11 +14,11 @@
 <meta property="og:url" content="https://licortes2026.github.io/ship-tracker/">
 <meta name="description" content="Unofficial personal tracker for the MV World Odyssey, Fall 2026 voyage. Not affiliated with Semester at Sea or the Institute for Shipboard Education. Not for navigation.">
 <meta name="theme-color" content="#0E2C38">
-<meta name="build" content="v1.1 · built 2026-09-14 13:20:55 UTC">
+<meta name="build" content="v1.2 · built 2026-09-15 12:48:08 UTC">
 <style>
   :root{
     --sea:#D4E6EE; --sea-deep:#BCD8E3; --land:#F0E7D1; --ink:#0E2C38;
-    --ink-soft:#4A6B77; --magenta:#B5246B; --hot:#E8202A; --rule:rgba(14,44,56,.22);
+    --ink-soft:#4A6B77; --magenta:#B5246B; --pink:#FF74B1; --hot:#E8202A; --rule:rgba(14,44,56,.22);
     --veg:#2E4116;
     --serif:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
     --sans:ui-sans-serif,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
@@ -66,7 +66,7 @@
   .legend span{display:flex;align-items:center;gap:6px}
   .legend i{display:block;width:26px;height:0;border-top-width:3px;border-top-style:solid}
   .legend .k-fix{border-top-color:var(--magenta)}
-  .legend .k-est{border-top-color:#1B6FD0;border-top-style:dotted;border-top-width:3px}
+  .legend .k-est{border-top-color:var(--pink);border-top-style:dotted;border-top-width:3px}
   .legend .k-plan{border-top-color:var(--ink);border-top-style:dashed;border-top-width:2px;opacity:.6}
   .legend .k-dot{width:9px;height:9px;border:0;border-radius:50%;background:var(--magenta)}
   .popover{position:absolute;z-index:5;background:var(--land);border:2px solid var(--hot);
@@ -165,7 +165,7 @@
         <path id="planned" fill="none" stroke="#0E2C38" stroke-opacity="0.5" stroke-width="1.2"
               stroke-dasharray="5 6" vector-effect="non-scaling-stroke"/>
         <path id="sailed" fill="none" stroke="#0E2C38" stroke-width="2.6" vector-effect="non-scaling-stroke"/>
-        <path id="est" fill="none" stroke="#1B6FD0" stroke-width="2.2" stroke-linecap="round"
+        <path id="est" fill="none" stroke="#FF74B1" stroke-width="2.2" stroke-linecap="round"
               stroke-dasharray="0.1 5" vector-effect="non-scaling-stroke"/>
         <path id="real" fill="none" stroke="#B5246B" stroke-width="2.4" vector-effect="non-scaling-stroke"/>
         <g id="portdots"></g>
@@ -214,8 +214,8 @@
   <ol class="ports" id="ports"></ol>
 
   <div class="legend">
-    <span><i class="k-fix"></i>AIS fix</span>
-    <span><i class="k-est"></i>Estimated since last fix</span>
+    <span><i class="k-fix"></i>Actual track, AIS</span>
+    <span><i class="k-est"></i>Estimated, since last AIS</span>
     <span><i class="k-plan"></i>Planned route</span>
     <span><i class="k-dot"></i>AIS position report</span>
   </div>
@@ -248,7 +248,7 @@
     <!-- Bumped by hand on every change to this page. UTC, so it never shifts with
          whoever is reading it. The same string sits in <meta name="build">, and the
          test battery checks the two agree, which is what stops it going stale. -->
-    <p class="build">v1.1 · built 2026-09-14 13:20:55 UTC</p>
+    <p class="build">v1.2 · built 2026-09-15 12:48:08 UTC</p>
   </div>
 </div>
 
@@ -543,12 +543,26 @@ var EST_STEP=3600000;   // one estimated position per hour
 // Real fixes, plus an hourly dead-reckoned position wherever there is a gap
 // between them and between the last fix and now. Estimates are flagged, never
 // mixed in with the reported ones.
+// Great-circle initial bearing from a to b, in degrees.
+function gcBearing(a,b){
+  var la1=a[0]*Math.PI/180, la2=b[0]*Math.PI/180, dlo=(b[1]-a[1])*Math.PI/180;
+  return (Math.atan2(Math.sin(dlo)*Math.cos(la2),
+                     Math.cos(la1)*Math.sin(la2)-Math.sin(la1)*Math.cos(la2)*Math.cos(dlo))
+          *180/Math.PI+360)%360;
+}
+// Great-circle destination: nm from p along an initial bearing.
+function gcDest(p,brgDeg,nm){
+  var R=3440.065,d=nm/R,th=brgDeg*Math.PI/180;
+  var la1=p[0]*Math.PI/180, lo1=p[1]*Math.PI/180;
+  var la2=Math.asin(Math.sin(la1)*Math.cos(d)+Math.cos(la1)*Math.sin(d)*Math.cos(th));
+  var lo2=lo1+Math.atan2(Math.sin(th)*Math.sin(d)*Math.cos(la1),
+                         Math.cos(d)-Math.sin(la1)*Math.sin(la2));
+  return [la2*180/Math.PI, ((lo2*180/Math.PI+540)%360)-180];
+}
+
 function buildTrack(){
   var pts=realPoints();
   var i,k;
-  for(i=0;i<pts.length;i++){
-    if(pts[i]._s===undefined) pts[i]._s=projectRoute(pts[i].lat,pts[i].lon).s;
-  }
 
   // Reported positions, joined to each other and to nothing else. Gaps between
   // fixes are NOT filled in.
@@ -568,24 +582,41 @@ function buildTrack(){
     out.push({lat:pts[i].lat,lon:pts[i].lon,t:pts[i].t,sog:pts[i].sog,cog:pts[i].cog,est:false});
   }
 
+  // Forward from the newest fix to now. This begins at her actual reported
+  // position, not at a projection of it onto the planned route: the estimate is
+  // the continuation of the magenta track, so it has to start where that track
+  // ends. Getting this wrong drew a line sideways from the last fix onto the
+  // timetable's line, which is what it used to do.
+  //
+  // Direction is the great circle from where she is to the next port. Her last
+  // reported course would serve for an hour and would sail her into Africa over a
+  // five-day silence, since a heading is only true until she alters it. Speed is
+  // her last reported speed, falling back to the timetable's if that is unusable.
+  //
+  // Clamped at the port. If the arithmetic runs her past it, she has arrived, and
+  // saying so is better than drawing her inland.
   var now=Date.now();
   if(pts.length){
     var last=pts[pts.length-1];
     if(now-last.t>EST_STEP*1.5){
       var v=(last.sog>1&&last.sog<30)?last.sog:scheduleSpeed(new Date());
-      if(v>0){
+      var st=dr(new Date());
+      var from=[last.lat,last.lon];
+      var target=st.port?[st.port.lat,st.port.lon]:null;
+      var toGo=target?gcDist(from,target):0;
+      if(v>0&&target&&toGo>0.5){
+        var brg=gcBearing(from,target);
         var steps=Math.min(500,Math.floor((now-last.t)/EST_STEP));
         for(k=1;k<=steps;k++){
-          out.push({s:Math.min(ROUTE_TOTAL,last._s+v*k),t:last.t+k*EST_STEP,est:true,
-                    sog:v,drSpeed:true});
+          var run=Math.min(toGo,v*k);
+          var q=gcDest(from,brg,run);
+          out.push({lat:q[0],lon:q[1],t:last.t+k*EST_STEP,est:true,sog:v,drSpeed:true});
+          if(run>=toGo) break;
         }
       }
     }
   }
 
-  for(i=0;i<out.length;i++){
-    if(out[i].est){ var q=routePoint(out[i].s); out[i].lat=q[0]; out[i].lon=q[1]; }
-  }
   return out;
 }
 
@@ -646,13 +677,20 @@ function drawDynamic(){
     var lastP=trk[trk.length-1];
     var realT=0;
     for(i=trk.length-1;i>=0;i--){ if(!trk[i].est){ realT=trk[i].t; break; } }
+    // A fix older than the estimate step is not where she is now, even when we
+    // cannot work out where she has got to. That happens when her last reported
+    // speed is unusable and the timetable has her alongside, so there is no speed
+    // to extrapolate with: the position stops advancing but it is still stale.
+    // Marking it AIS would present a fix hours old as her current position, which
+    // is the one thing this page must not do.
+    var stale=(Date.now()-realT)>EST_STEP*1.5;
     shipPos=[lastP.lat,lastP.lon];
-    shipInfo={source:lastP.est?"estimated":"AIS",
+    shipInfo={source:(lastP.est||stale)?"estimated":"AIS",
               t:lastP.t,realT:realT,sog:lastP.sog,cog:lastP.cog,
-              est:!!lastP.est,dr:!!lastP.drSpeed};
+              est:!!lastP.est||stale,dr:!!lastP.drSpeed};
   }
 
-  var ring=shipInfo.est?"#1B6FD0":"#B5246B";
+  var ring=shipInfo.est?"#FF74B1":"#B5246B";   // pink ahead, magenta on a real fix
   document.getElementById("ship").innerHTML=
     '<circle data-ship="1" data-r="18" cx="'+shipPos[1]+'" cy="'+(-shipPos[0])+
     '" r="1" fill="transparent" stroke="none" style="cursor:pointer"/>'+

@@ -200,18 +200,41 @@ const now = Date.now();
   B.T.setAis([{ t: now - 50*3600000, lat: 40.0, lon: -10.0, sog: 12, cog: 190 }]);
   B.T.draw();
   const dotted = ((B.els.est.attrs.d || "").match(/M/g) || []).length;
-  ok("a 50 hour gap fills with estimates", dotted > 20, "dotted " + dotted);
+  ok("a stale fix draws an estimate ahead of it", dotted >= 3, "dotted " + dotted);
   ok("stale fix flips the marker to estimated", B.T.getShipInfo().est === true);
   ok("age is measured from the real fix, not the estimate",
      Math.abs(B.T.getShipInfo().realT - (now - 50*3600000)) < 1000);
   const dots = (B.els.fixdots._c() || []).length;
   ok("estimates get no dots, only the real fix does", dots === 1, dots + " dots");
+
+  // The bug this guards: the estimate used to be computed as a distance along the
+  // planned route, so its first point sat ON that route rather than at her actual
+  // position, and the chart drew a line sideways from the fix to the timetable.
+  // The estimate is the continuation of the real track, so it must begin where
+  // the real track ends.
+  const trk = B.T.buildTrack();
+  const lastReal = trk.filter(p => !p.est).pop();
+  const firstEst = trk.find(p => p.est);
+  ok("the estimate begins at the reported position, not on the planned route",
+     !!firstEst && B.T.gcDist([lastReal.lat, lastReal.lon], [firstEst.lat, firstEst.lon]) < 15,
+     firstEst ? B.T.gcDist([lastReal.lat, lastReal.lon], [firstEst.lat, firstEst.lon]).toFixed(1) + " nm away"
+              : "no estimate");
+  // and it must not run her past the port she is heading for
+  const lastEst = trk.filter(p => p.est).pop();
+  ok("the estimate stops at the next port rather than sailing inland",
+     B.T.gcDist([lastEst.lat, lastEst.lon], [lastReal.lat, lastReal.lon]) <= 600,
+     B.T.gcDist([lastEst.lat, lastEst.lon], [lastReal.lat, lastReal.lon]).toFixed(0) + " nm run");
 }
 {
   const B = load(AIS_BUILD);
   B.T.setAis([{ t: now - 30*3600000, lat: 40, lon: -10, sog: 0, cog: 0 }]);
   B.T.draw();
-  ok("zero reported speed falls back to the timetable", B.T.getShipInfo().est === true);
+  // Whether or not a speed can be found to move her with, a fix this old is not
+  // her current position and the marker has to say so. This used to depend on an
+  // estimate being generated, so it broke the day the timetable put her in port
+  // and left the marker claiming a 30 hour old fix as live.
+  ok("zero reported speed still flags the marker estimated", B.T.getShipInfo().est === true);
+  ok("and the source is not reported as AIS", B.T.getShipInfo().source === "estimated");
 }
 {
   const B = load(AIS_BUILD);
