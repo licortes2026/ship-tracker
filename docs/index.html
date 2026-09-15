@@ -18,7 +18,7 @@
 <style>
   :root{
     --sea:#D4E6EE; --sea-deep:#BCD8E3; --land:#F0E7D1; --ink:#0E2C38;
-    --ink-soft:#4A6B77; --magenta:#B5246B; --pink:#FF74B1; --hot:#E8202A; --rule:rgba(14,44,56,.22);
+    --ink-soft:#4A6B77; --magenta:#B5246B; --track:#2E9BFF; --pink:#FF74B1; --hot:#E8202A; --rule:rgba(14,44,56,.22);
     --veg:#2E4116;
     --serif:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
     --sans:ui-sans-serif,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
@@ -65,10 +65,10 @@
           border-top:1px solid var(--rule);font-size:12px;color:var(--ink-soft)}
   .legend span{display:flex;align-items:center;gap:6px}
   .legend i{display:block;width:26px;height:0;border-top-width:3px;border-top-style:solid}
-  .legend .k-fix{border-top-color:var(--magenta)}
+  .legend .k-fix{border-top-color:var(--track)}
   .legend .k-est{border-top-color:var(--pink);border-top-style:dotted;border-top-width:3px}
   .legend .k-plan{border-top-color:var(--ink);border-top-style:dashed;border-top-width:2px;opacity:.6}
-  .legend .k-dot{width:9px;height:9px;border:0;border-radius:50%;background:var(--magenta)}
+  .legend .k-dot{width:9px;height:9px;border:0;border-radius:50%;background:var(--track)}
   .popover{position:absolute;z-index:5;background:var(--land);border:2px solid var(--hot);
            padding:9px 11px;max-width:230px;font-size:12.5px;line-height:1.45;
            box-shadow:2px 2px 0 rgba(232,32,42,.22);pointer-events:none;display:none}
@@ -167,7 +167,7 @@
         <path id="sailed" fill="none" stroke="#0E2C38" stroke-width="2.6" vector-effect="non-scaling-stroke"/>
         <path id="est" fill="none" stroke="#FF74B1" stroke-width="2.2" stroke-linecap="round"
               stroke-dasharray="0.1 5" vector-effect="non-scaling-stroke"/>
-        <path id="real" fill="none" stroke="#B5246B" stroke-width="2.4" vector-effect="non-scaling-stroke"/>
+        <path id="real" fill="none" stroke="#2E9BFF" stroke-width="2.4" vector-effect="non-scaling-stroke"/>
         <g id="portdots"></g>
         <g id="fixdots"></g>
         <g id="ship"></g>
@@ -666,7 +666,7 @@ function drawDynamic(){
   for(i=0;i<trk.length;i++){
     if(trk[i].est) continue;
     fd+='<circle data-r="2" cx="'+trk[i].lon+'" cy="'+(-trk[i].lat)+
-        '" r="1" fill="#B5246B" stroke="#B5246B" '+
+        '" r="1" fill="#2E9BFF" stroke="#2E9BFF" '+
         'stroke-width="1" vector-effect="non-scaling-stroke"/>';
   }
   document.getElementById("fixdots").innerHTML=fd;
@@ -690,7 +690,7 @@ function drawDynamic(){
               est:!!lastP.est||stale,dr:!!lastP.drSpeed};
   }
 
-  var ring=shipInfo.est?"#FF74B1":"#B5246B";   // pink ahead, magenta on a real fix
+  var ring=shipInfo.est?"#FF74B1":"#2E9BFF";   // pink ahead, magenta on a real fix
   document.getElementById("ship").innerHTML=
     '<circle data-ship="1" data-r="18" cx="'+shipPos[1]+'" cy="'+(-shipPos[0])+
     '" r="1" fill="transparent" stroke="none" style="cursor:pointer"/>'+
