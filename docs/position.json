@@ -2,18 +2,15 @@
  "mmsi": "311000410",
  "incremental": false,
  "connected": true,
- "checkedAt": 1789619114110,
- "count": 45,
- "lastT": 1789618806113,
+ "checkedAt": 1789622641751,
+ "count": 46,
+ "lastT": 1789622586489,
  "latest": {
-  "t": 1789618806113,
-  "lat": 41.17803166666667,
-  "lon": -8.70251,
+  "t": 1789622586489,
+  "lat": 41.17803,
+  "lon": -8.702506666666666,
   "sog": 0,
-  "cog": 53.6
+  "cog": 227.4
  },
- "meta": {
-  "name": "WORLD ODYSSEY",
-  "destination": "PT LEI"
- }
+ "meta": {}
 }
