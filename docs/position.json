@@ -2,18 +2,15 @@
  "mmsi": "311000410",
  "incremental": false,
  "connected": true,
- "checkedAt": 1789831391432,
- "count": 87,
- "lastT": 1789831371237,
+ "checkedAt": 1789835016909,
+ "count": 88,
+ "lastT": 1789834850452,
  "latest": {
-  "t": 1789831371237,
-  "lat": 38.199865,
-  "lon": -9.961411666666667,
-  "sog": 9.7,
-  "cog": 166.2
+  "t": 1789834850452,
+  "lat": 38.04508333333333,
+  "lon": -9.915976666666667,
+  "sog": 10.2,
+  "cog": 168.5
  },
- "meta": {
-  "name": "WORLD ODYSSEY",
-  "destination": "MA TNG"
- }
+ "meta": {}
 }
