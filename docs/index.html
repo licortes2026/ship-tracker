@@ -577,17 +577,26 @@ function buildTrack(){
     if(now-last.t>EST_STEP*1.5){
       var v=(last.sog>1&&last.sog<30)?last.sog:scheduleSpeed(new Date());
       var st=dr(new Date());
-      var from=[last.lat,last.lon];
-      var target=st.port?[st.port.lat,st.port.lon]:null;
-      var toGo=target?gcDist(from,target):0;
-      if(v>0&&target&&toGo>0.5){
-        var brg=gcBearing(from,target);
+      // Walk the planned route rather than bearing straight at the port, using the
+      // same fading correction as forwardPath. A direct bearing from an offshore
+      // fix cuts across whatever land lies between her and the port: from off
+      // Leixoes the bearing to Tangier crosses Portugal.
+      var s0=projectRoute(last.lat,last.lon).s;
+      var p0=routePoint(s0);
+      var d=[last.lat-p0[0], last.lon-p0[1]];
+      var sPort=(LEGS[st.legIndex]?ROUTE_OFF[st.legIndex]+LEGS[st.legIndex].nm:ROUTE_TOTAL);
+      var BLEND=60;
+      if(v>0&&sPort-s0>0.5){
         var steps=Math.min(500,Math.floor((now-last.t)/EST_STEP));
-        for(k=1;k<=steps;k++){
-          var run=Math.min(toGo,v*k);
-          var q=gcDest(from,brg,run);
-          out.push({lat:q[0],lon:q[1],t:last.t+k*EST_STEP,est:true,sog:v,drSpeed:true});
-          if(run>=toGo) break;
+        // k=0 puts the first point exactly on the fix (w=1 restores the full
+        // offset), so the run begins where the real track ends. No sideways jump.
+        for(k=0;k<=steps;k++){
+          var sq=Math.min(sPort, s0+v*k);
+          var q=routePoint(sq);
+          var w=Math.max(0,1-(sq-s0)/BLEND);
+          out.push({lat:q[0]+d[0]*w, lon:q[1]+d[1]*w, t:last.t+k*EST_STEP,
+                    est:true, sog:v, drSpeed:true});
+          if(sq>=sPort) break;
         }
       }
     }

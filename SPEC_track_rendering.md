@@ -1,6 +1,6 @@
 # SPEC: how the chart draws where she has been and where she is going
 
-Status: **live as of 2026-09-15, build v1.4.**
+Status: **live as of 2026-09-19, build v1.5.**
 Supersedes the drawing rules in HANDOFF section 5.
 
 ---
@@ -146,9 +146,16 @@ visible.
 When the newest fix is older than 90 minutes, one crimson run is drawn from that
 fix to where she probably is now:
 
-* Direction: the great-circle bearing from the fix to the next port. Not her last
-  reported course — a heading is true only until she alters it, and over a
-  five-day crossing it would sail her into Africa.
+* Direction: **along the planned route**, re-originated from the fix with the same
+  fading correction as section 5, converging over 60 nm. Not her last reported
+  course: a heading is true only until she alters it, and over a five-day crossing
+  it would sail her into Africa. And not a direct bearing to the next port either,
+  which was the rule until 2026-09-19 and put her inland. From the 18 Sep 20:17 fix
+  off Leixoes the bearing to Tangier crossed Portugal, and the marker was drawn
+  near Coimbra. Section 5 already rejected direct bearings for the forward route
+  for exactly this reason; section 4 now uses the same machinery.
+* The run begins exactly on the fix. At its first step the correction is at full
+  strength, so there is no sideways jump onto the planned line.
 * Speed: her last reported speed, falling back to the timetable's implied speed
   when that is unusable.
 * Clamped at the port. Arithmetic that puts her past it means she has arrived.
