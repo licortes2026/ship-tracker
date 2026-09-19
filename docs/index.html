@@ -58,7 +58,9 @@
   .basemap-sat #bg{fill:#07111f}
   .basemap-sat #graticule path{stroke:#FFFFFF;stroke-opacity:.16}
   .basemap-sat #planned{stroke:#FFFFFF;stroke-opacity:.5}
-  .basemap-sat #sailed{stroke:#FFE24A}\n  .basemap-sat #real{stroke:#FFE24A}
+  .basemap-sat #sailed{stroke:#FFE24A}
+  .basemap-sat #real{stroke:#FFE24A}
+  .basemap-sat #est{stroke:#FFE24A}
   .basemap-sat .readout{background:rgba(14,44,56,.88);color:#F0E7D1;border-color:rgba(255,255,255,.3)}
   .basemap-chart #earth{display:none}
   .legend{display:flex;flex-wrap:wrap;gap:14px;margin-top:14px;padding-top:12px;
@@ -66,8 +68,8 @@
   .legend span{display:flex;align-items:center;gap:6px}
   .legend i{display:block;width:26px;height:0;border-top-width:3px;border-top-style:solid}
   .legend .k-fix{border-top-color:#C9A227}
-  .legend .k-est{border-top-color:var(--magenta);border-top-style:dotted;border-top-width:3px}
-  .legend .k-histdash{border-top-color:#C9A227;border-top-style:dashed;border-top-width:3px}\n  .legend .k-plan{border-top-color:var(--ink);border-top-style:dashed;border-top-width:2px;opacity:.6}
+  .legend .k-histdash{border-top-color:#C9A227;border-top-style:dashed;border-top-width:3px}
+  .legend .k-plan{border-top-color:var(--ink);border-top-style:dashed;border-top-width:2px;opacity:.6}
   .legend .k-dot{width:9px;height:9px;border:0;border-radius:50%;background:#FFE24A;border:1px solid #7A5B00}
   .popover{position:absolute;z-index:5;background:var(--land);border:2px solid var(--hot);
            padding:9px 11px;max-width:230px;font-size:12.5px;line-height:1.45;
@@ -165,8 +167,8 @@
         <path id="planned" fill="none" stroke="#0E2C38" stroke-opacity="0.5" stroke-width="1.2"
               stroke-dasharray="5 6" vector-effect="non-scaling-stroke"/>
         <path id="sailed" fill="none" stroke="#C9A227" stroke-width="2.4" stroke-dasharray="7 5" vector-effect="non-scaling-stroke"/>
-        <path id="est" fill="none" stroke="#B5246B" stroke-width="2.2" stroke-linecap="round"
-              stroke-dasharray="0.1 5" vector-effect="non-scaling-stroke"/>
+        <path id="est" fill="none" stroke="#C9A227" stroke-width="2.4"
+              stroke-dasharray="7 5" vector-effect="non-scaling-stroke"/>
         <path id="real" fill="none" stroke="#C9A227" stroke-width="2.8" vector-effect="non-scaling-stroke"/>
         <g id="portdots"></g>
         <g id="fixdots"></g>
@@ -214,8 +216,8 @@
   <ol class="ports" id="ports"></ol>
 
   <div class="legend">
-    <span><i class="k-fix"></i>Track, reported</span>\n    <span><i class="k-histdash"></i>Track, reconstructed</span>
-    <span><i class="k-est"></i>Estimated position now</span>
+    <span><i class="k-fix"></i>Track, reported</span>
+    <span><i class="k-histdash"></i>Track, reconstructed</span>
     <span><i class="k-plan"></i>Planned route</span>
     <span><i class="k-dot"></i>AIS position report</span>
   </div>
