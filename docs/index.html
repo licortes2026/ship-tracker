@@ -1307,7 +1307,7 @@ function showShip(){
 
   if(st.mode==="sea"){
     var togo=Math.max(0,(ROUTE_OFF[st.legIndex]+LEGS[st.legIndex].nm)-
-             projectRoute(shipPos[0],shipPos[1]).s);
+             projectLeg(shipPos[0],shipPos[1],st.legIndex).s);
     var ms=st.until-now, days=Math.floor(ms/86400000), hrs=Math.floor((ms%86400000)/3600000);
     html+='<div class="s">'+st.port.n.split(",")[0]+" in "+
           (days>0?days+"d ":"")+hrs+'h</div>';

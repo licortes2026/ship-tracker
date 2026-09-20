@@ -167,6 +167,21 @@ group("B. The route ahead lands on the next port, then carries on");
   }
 }
 
+{
+  // The ship card's "nm to run" must agree with the marker beside it. It was measured with
+  // the whole-route vertex snap, about 30 nm out here.
+  const r = estimate(NOW, FIX);
+  const T = r.B.T;
+  at(NOW, () => T.showShip());
+  const html = r.B.els.popover.innerHTML || "";
+  const m = html.match(/([\d,]+) nm to run/);
+  const togo = m ? Number(m[1].replace(/,/g, "")) : NaN;
+  const away = T.gcDist(T.getShipPos(), TANGIER);
+  ok("the ship card gives a distance to run", !!m, html.slice(0, 120));
+  ok("and it agrees with where the marker is drawn",
+     Math.abs(togo - away) < 8, togo + " nm on the card, " + away.toFixed(0) + " nm from the marker to Tangier");
+}
+
 console.log("\n====================================================");
 console.log(`  ${pass} passed, ${fail} failed`);
 console.log("====================================================");
