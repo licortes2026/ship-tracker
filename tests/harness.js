@@ -10,6 +10,7 @@ function load(file, opts){
   code = code.replace(/\n\}\)\(\);\s*$/,
     `\nglobal.__T={PORTS:PORTS,LEGS:LEGS,TOTAL_NM:TOTAL_NM,ROUTE_OFF:ROUTE_OFF,ROUTE_TOTAL:ROUTE_TOTAL,
       dr:dr,gcDist:gcDist,pointAt:pointAt,routePoint:routePoint,projectRoute:projectRoute,
+      projectLeg:(typeof projectLeg==="function"?projectLeg:null),
       buildTrack:buildTrack,realPoints:realPoints,fmtPos:fmtPos,
       buildHistory:buildHistory,warpSpan:warpSpan,forwardPath:forwardPath,
       spanKind:spanKind,spanPath:spanPath,spanBudget:spanBudget,pathLen:pathLen,

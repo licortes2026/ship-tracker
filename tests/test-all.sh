@@ -45,6 +45,7 @@ python3 -c "import yaml,sys; yaml.safe_load(open('$ROOT/.github/workflows/track.
   || echo "  (yaml module unavailable, skipped)"
 
 $JS run.js || FAILED=1
+$JS run-pace.js || FAILED=1
 $JS run-action.js || FAILED=1
 ./run-server.sh || FAILED=1
 echo ""

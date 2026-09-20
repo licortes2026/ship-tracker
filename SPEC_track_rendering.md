@@ -156,8 +156,23 @@ fix to where she probably is now:
   for exactly this reason; section 4 now uses the same machinery.
 * The run begins exactly on the fix. At its first step the correction is at full
   strength, so there is no sideways jump onto the planned line.
-* Speed: her last reported speed, falling back to the timetable's implied speed
-  when that is unusable.
+* Speed: the slower of two extrapolations (2026-09-20). Her last reported speed,
+  falling back to the timetable's implied speed when that is unusable, and the pace
+  that would bring her in exactly at the scheduled arrival from where the last fix
+  put her: (route distance fix to port) / (scheduled arrival minus fix time). Taking
+  the slower is the same as showing the position that keeps her farther from the
+  port, so the estimate is never ahead of the timetable however fast she was last
+  seen going. The case that prompted it: fix 19 Sep 17:15 UTC, 264 nm from Tangier,
+  9.8 kt, due 22 Sep 08:00 local, so 4.3 kt required. Speed alone put her 28 nm from
+  Tangier on 20 Sep with the arrival 38 hours away; the pace puts her about 165 nm
+  out. Consequences: a ship that really is early lags her true position until the
+  next fix, and the next fix restarts both from where it lands. A fix later than the
+  scheduled arrival has nothing to pace against, so only her speed applies. A ship
+  slower than the pace is run at her own speed. The ship card says "assumed, held to
+  the schedule" when the schedule set the speed.
+* The start is measured to the route line of the current leg, interpolated between
+  vertices, not to the nearest vertex of the whole route. The vertex snap was up to
+  half a segment (about 30 nm) out; on 20 Sep it put the start 9 nm ahead of the fix.
 * Clamped at the port. Arithmetic that puts her past it means she has arrived.
 
 **At most one crimson run exists and it always terminates at her current
@@ -188,6 +203,17 @@ port — a direct line from an offshore position would cut across headlands, and
 Cape St Vincent on the Leixões-Tangier leg was specifically hand-fixed to round
 to the west.
 
+**The line lands on the next port, then carries on** (2026-09-20). It is built from
+the route's own vertices, so it passes through each port and waypoint exactly, and
+the leg comes from the timetable, not from a nearest-point search of the whole
+route. That search cannot tell the leg into a port from the leg out of it, and
+beside Tangier the outgoing leg was closer: the line started at the marker and
+headed for Brazil, skipping the port she was still approaching. The fading
+correction is still about 60 nm but is finished by the port, so the line arrives
+on it instead of passing to one side. Known gap: if she is more than a port stay
+behind the timetable, the timetable's leg is already the next one and the leg would
+have to come from her fixes instead.
+
 ## 6. What this cannot fix
 
 She sailed IJmuiden 9 Sep 20:26. The first AIS reading is 14 Sep 00:09. **Four
@@ -206,3 +232,9 @@ continuously and this does not recur.
 5. Spans of 90 minutes or less, or under 1 nm, are solid; the rest are dashed.
 6. The forward route's first point is her current position.
 7. Nothing is written to `log.jsonl` but AIS readings.
+8. The estimate is never farther along the route than the schedule pace allows: run
+   distance is at most (fix to port) x (time since fix) / (scheduled arrival minus
+   fix time).
+9. The forward route passes through the next port, then every later port in order,
+   and ends at the last port.
+10. The forward route lands on the next port even from 15 nm off the planned line.

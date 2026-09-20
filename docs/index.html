@@ -14,7 +14,7 @@
 <meta property="og:url" content="https://licortes2026.github.io/ship-tracker/">
 <meta name="description" content="Unofficial personal tracker for the MV World Odyssey, Fall 2026 voyage. Not affiliated with Semester at Sea or the Institute for Shipboard Education. Not for navigation.">
 <meta name="theme-color" content="#0E2C38">
-<meta name="build" content="v1.4 · built 2026-09-15 14:42:48 UTC">
+<meta name="build" content="v1.5 · built 2026-09-20 17:35:55 UTC">
 <style>
   :root{
     --sea:#D4E6EE; --sea-deep:#BCD8E3; --land:#F0E7D1; --ink:#0E2C38;
@@ -281,7 +281,7 @@
     <!-- Bumped by hand on every change to this page. UTC, so it never shifts with
          whoever is reading it. The same string sits in <meta name="build">, and the
          test battery checks the two agree, which is what stops it going stale. -->
-    <p class="build">v1.4 · built 2026-09-15 14:42:48 UTC</p>
+    <p class="build">v1.5 · built 2026-09-20 17:35:55 UTC</p>
   </div>
 </div>
 
@@ -557,6 +557,27 @@ function projectRoute(lat,lon){
   return {s:best,off:bd};
 }
 
+// Nearest point on ONE leg, interpolated along the segments between its vertices.
+// projectRoute above searches the whole voyage and snaps to a vertex. Beside a port that
+// cannot tell the leg into it from the leg out of it, and the outgoing one can be closer, so
+// a ship approaching Tangier was treated as already leaving it. The leg comes from the
+// timetable instead, and the position is measured to the line, not to its corners.
+function projectLeg(lat,lon,i){
+  var L=LEGS[i];
+  if(!L) return projectRoute(lat,lon);
+  var kx=Math.cos(lat*D2R), best=0, bd=Infinity;
+  for(var k=0;k<L.line.length-1;k++){
+    var a=L.line[k], b=L.line[k+1];
+    // a flat frame in nautical miles around the point, ample at these distances
+    var ax=(a[1]-lon)*kx*60, ay=(a[0]-lat)*60, bx=(b[1]-lon)*kx*60, by=(b[0]-lat)*60;
+    var dx=bx-ax, dy=by-ay, L2=dx*dx+dy*dy;
+    var t=L2>0?Math.max(0,Math.min(1,-(ax*dx+ay*dy)/L2)):0;
+    var d=Math.sqrt((ax+t*dx)*(ax+t*dx)+(ay+t*dy)*(ay+t*dy));
+    if(d<bd){ bd=d; best=ROUTE_OFF[i]+L.cum[k]+t*(L.cum[k+1]-L.cum[k]); }
+  }
+  return {s:best,off:bd};
+}
+
 // Speed the timetable implies for the leg she is on, as a fallback.
 function scheduleSpeed(now){
   var st=dr(now);
@@ -615,11 +636,21 @@ function buildTrack(){
       // same fading correction as forwardPath. A direct bearing from an offshore
       // fix cuts across whatever land lies between her and the port: from off
       // Leixoes the bearing to Tangier crosses Portugal.
-      var s0=projectRoute(last.lat,last.lon).s;
+      var s0=projectLeg(last.lat,last.lon,st.legIndex).s;
       var p0=routePoint(s0);
       var d=[last.lat-p0[0], last.lon-p0[1]];
       var sPort=(LEGS[st.legIndex]?ROUTE_OFF[st.legIndex]+LEGS[st.legIndex].nm:ROUTE_TOTAL);
       var BLEND=60;
+      // Two extrapolations, and she is shown by the one that keeps her farther from the port:
+      // her last reported speed, and the pace that would bring her in exactly on schedule from
+      // where the last fix put her. However fast she was last seen going, the estimate never
+      // runs ahead of the timetable. A fix later than the scheduled arrival leaves nothing to
+      // pace against, so only her speed applies.
+      var paced=false, arrT=PORTS[st.legIndex+1]?new Date(PORTS[st.legIndex+1].arr).getTime():0;
+      if(arrT>last.t&&sPort-s0>0.5){
+        var vReq=(sPort-s0)/((arrT-last.t)/3600000);
+        if(vReq<v){ v=vReq; paced=true; }
+      }
       if(v>0&&sPort-s0>0.5){
         var steps=Math.min(500,Math.floor((now-last.t)/EST_STEP));
         // k=0 puts the first point exactly on the fix (w=1 restores the full
@@ -629,7 +660,7 @@ function buildTrack(){
           var q=routePoint(sq);
           var w=Math.max(0,1-(sq-s0)/BLEND);
           out.push({lat:q[0]+d[0]*w, lon:q[1]+d[1]*w, t:last.t+k*EST_STEP,
-                    est:true, sog:v, drSpeed:true});
+                    est:true, sog:v, drSpeed:true, paced:paced});
           if(sq>=sPort) break;
         }
       }
@@ -773,17 +804,33 @@ function buildHistory(){
 // The route ahead, starting exactly where she is and converging onto the planned
 // waypoints over ~60nm, so it rejoins the hand-placed line rather than cutting
 // across a headland on a direct bearing to the port.
-function forwardPath(from){
-  var s0=projectRoute(from[0],from[1]).s;
+// The route still to sail, from where she is: the rest of the current leg, the next port
+// itself, then every later leg. It is built from the route's own vertices, so it passes
+// through each port and waypoint exactly instead of resampling across them.
+//
+// The leg comes from the timetable, not from a search of the whole route. Beside a port the
+// nearest point can lie on the leg out of it, which made this line jump onto that leg and
+// skip the port she was still heading for.
+function forwardPath(from,legIndex){
+  var li=legIndex==null?dr(new Date()).legIndex:legIndex;
+  if(!LEGS[li]) li=0;
+  var s0=projectLeg(from[0],from[1],li).s;
   var p0=routePoint(s0);
   var d=[from[0]-p0[0], from[1]-p0[1]];
-  var BLEND=60, outp=[], n=260;
-  for(var k=0;k<=n;k++){
-    var sq=s0+(ROUTE_TOTAL-s0)*(k/n), p=routePoint(sq);
-    var w=Math.max(0,1-(sq-s0)/BLEND);
-    outp.push([p[0]+d[0]*w, p[1]+d[1]*w]);
+  var sPort=ROUTE_OFF[li]+LEGS[li].nm;
+  // The correction toward the planned line fades out over 60 nm, but must be gone by the
+  // port, so the line lands on it rather than passing to one side.
+  var BLEND=Math.min(60,sPort-s0);
+  var outp=[[from[0],from[1]]];
+  for(var j=li;j<LEGS.length;j++){
+    var Lg=LEGS[j];
+    for(var k=(j===li?0:1);k<Lg.line.length;k++){
+      var sq=ROUTE_OFF[j]+Lg.cum[k];
+      if(sq<=s0+1e-6) continue;
+      var w=BLEND>0.001?Math.max(0,1-(sq-s0)/BLEND):0;
+      outp.push([Lg.line[k][0]+d[0]*w, Lg.line[k][1]+d[1]*w]);
+    }
   }
-  outp[0]=[from[0],from[1]];
   return outp;
 }
 
@@ -852,7 +899,7 @@ function drawDynamic(){
     shipPos=[lastP.lat,lastP.lon];
     shipInfo={source:(lastP.est||stale)?"estimated":"AIS",
               t:lastP.t,realT:realT,sog:lastP.sog,cog:lastP.cog,
-              est:!!lastP.est||stale,dr:!!lastP.drSpeed};
+              est:!!lastP.est||stale,dr:!!lastP.drSpeed,paced:!!lastP.paced};
   }
 
   var ring=shipInfo.est?"#B5246B":"#FFE24A";   // pink ahead, magenta on a real fix
@@ -1259,7 +1306,7 @@ function showShip(){
   if(shipInfo.sog!=null&&shipInfo.sog>0){
     html+='<div class="t">'+Number(shipInfo.sog).toFixed(1)+' kt'+
           (shipInfo.cog!=null?", course "+Math.round(shipInfo.cog)+"\u00b0":"")+
-          (shipInfo.dr?" (assumed)":"")+'</div>';
+          (shipInfo.dr?(shipInfo.paced?" (assumed, held to the schedule)":" (assumed)"):"")+'</div>';
   }
 
   if(st.mode==="sea"){
