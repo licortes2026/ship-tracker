@@ -2,15 +2,15 @@
  "mmsi": "311000410",
  "incremental": false,
  "connected": true,
- "checkedAt": 1790202265078,
- "count": 105,
- "lastT": 1790198448216,
+ "checkedAt": 1790205666718,
+ "count": 106,
+ "lastT": 1790205469449,
  "latest": {
-  "t": 1790198448216,
+  "t": 1790205469449,
   "lat": 35.791145,
-  "lon": -5.79853,
+  "lon": -5.79852,
   "sog": 0,
-  "cog": 18
+  "cog": 273
  },
  "meta": {}
 }
