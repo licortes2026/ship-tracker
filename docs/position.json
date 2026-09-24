@@ -2,18 +2,15 @@
  "mmsi": "311000410",
  "incremental": false,
  "connected": true,
- "checkedAt": 1790223888846,
- "count": 110,
- "lastT": 1790223652148,
+ "checkedAt": 1790227415671,
+ "count": 111,
+ "lastT": 1790227252599,
  "latest": {
-  "t": 1790223652148,
-  "lat": 35.791145,
-  "lon": -5.798521666666667,
+  "t": 1790227252599,
+  "lat": 35.79114166666667,
+  "lon": -5.798525,
   "sog": 0,
-  "cog": 4
+  "cog": 147
  },
- "meta": {
-  "name": "WORLD ODYSSEY",
-  "destination": "BR SSA"
- }
+ "meta": {}
 }
