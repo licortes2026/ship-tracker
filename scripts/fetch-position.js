@@ -58,7 +58,7 @@ console.log(`log holds ${points.length} fixes`);
 let best = null, meta = {}, gotStatic = false, heard = 0;
 
 const ws = new WebSocket("wss://stream.aisstream.io/v0/stream", { perMessageDeflate: true });
-const timer = setTimeout(finish, WINDOW);
+const timer = setTimeout(() => finish().catch(e => { console.error(e); process.exit(1); }), WINDOW);
 
 let opened = false;
 ws.on("open", () => {
@@ -111,10 +111,34 @@ ws.on("message", raw => {
   }
 });
 
-ws.on("error", e => { console.error("stream error:", e.message); finish(); });
+ws.on("error", e => { console.error("stream error:", e.message); finish().catch(() => process.exit(1)); });
+
+// Optional second sources, named in AIS_EXTRA_SOURCES (comma separated, each a file in
+// scripts/sources/ exporting fetchPosition). aisstream is terrestrial only and went silent for
+// 16 days over a voyage that another network followed the whole way. A source that fails or
+// has nothing contributes nothing; it can never break the run.
+async function fromExtraSources(){
+  const names = (process.env.AIS_EXTRA_SOURCES || "").split(",").map(x => x.trim()).filter(Boolean);
+  let pick = null;
+  for (const name of names){
+    if (!/^[a-z0-9-]+$/.test(name)){ console.log(`extra source "${name}": not a valid name`); continue; }
+    try {
+      const mod = require(path.join(__dirname, "sources", name + ".js"));
+      const r = await Promise.race([
+        mod.fetchPosition({ mmsi: MMSI, env: process.env }),
+        new Promise(res => setTimeout(() => res(null), 20000))
+      ]);
+      if (!r || !Number.isFinite(r.t)){ console.log(`extra source ${name}: nothing`); continue; }
+      if (r.t > Date.now() + 10 * 60000){ console.log(`extra source ${name}: timestamp in the future, ignored`); continue; }
+      console.log(`extra source ${name}: ${r.lat.toFixed(4)}, ${r.lon.toFixed(4)} @ ${new Date(r.t).toISOString()}`);
+      if (!pick || r.t > pick.t) pick = Object.assign({ src: name }, r);
+    } catch (e) { console.log(`extra source ${name} failed: ${e.message}`); }
+  }
+  return pick;
+}
 
 let done = false;
-function finish(){
+async function finish(){
   if (done) return;
   done = true;
   clearTimeout(timer);
@@ -129,6 +153,11 @@ function finish(){
   if (odd) console.log(`${odd} unexpected message(s) from aisstream this window`);
   if (!opened) console.log("the websocket never opened: no subscription was made");
 
+  // The newest fix from any source wins. A stale second-source fix never replaces a fresher
+  // aisstream report, and the log below still drops anything it already holds.
+  const extra = await fromExtraSources();
+  if (extra && (!best || extra.t > best.t)) best = extra;
+
   if (!best){
     console.log("no report in this window: out of terrestrial range, or no receiver nearby");
     // Still refresh the timestamp so the page can say how long she has been quiet.
@@ -142,7 +171,9 @@ function finish(){
   const moved = last ? nm(last, best) : Infinity;
   const mins  = last ? (best.t - last.t) / 60000 : Infinity;
 
-  if (moved < 0.3 && mins < 45){
+  if (last && best.t <= last.t){
+    console.log(`not newer than the log's last fix, not appending`);
+  } else if (moved < 0.3 && mins < 45){
     console.log(`same spot (${moved.toFixed(2)} nm, ${mins.toFixed(0)} min), not appending`);
   } else if (last && moved > 900 && mins < 60){
     console.log(`implausible jump of ${moved.toFixed(0)} nm, dropping`);
