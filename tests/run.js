@@ -318,7 +318,7 @@ const now = Date.now();
   B.T.draw();
   const d = B.els.est.attrs.d || "";
   ok("an absurdly old fix does not explode the estimate count",
-     (d.match(/M/g) || []).length <= 501);
+     (d.match(/M/g) || []).length <= 4001);   // bounded by the planner's step cap
 }
 
 // ---------------------------------------------------------------- ui

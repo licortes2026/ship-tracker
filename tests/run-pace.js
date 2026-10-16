@@ -96,9 +96,12 @@ group("A. The estimate is paced to the schedule");
   // A fix taken after the scheduled arrival leaves nothing to pace against.
   const late = { t: DUE + 3600000, lat: 35.90, lon: -6.35, sog: 8.0, cog: 110 };
   const r = estimate(DUE + 5*3600000, late);
+  const run1 = r.trk[1];
   ok("a fix later than the due time is not paced",
-     r.trk.length > 1 && r.B.T.getShipInfo().paced === false, "paced " + r.B.T.getShipInfo().paced);
-  ok("it runs at her reported speed", r.tip && Math.abs(r.tip.sog - 8.0) < 0.01, r.tip && r.tip.sog);
+     r.trk.length > 1 && run1 && run1.paced === false, "paced " + (run1 && run1.paced));
+  ok("it runs at her reported speed", run1 && Math.abs(run1.sog - 8.0) < 0.01, run1 && run1.sog);
+  ok("and she ends alongside Tangier, waiting for the sailing time",
+     r.tip && r.B.T.gcDist([r.tip.lat, r.tip.lon], TANGIER) < 3, r.tip && r.tip.lat);
 }
 
 // --------------------------------------------------------------- route ahead
@@ -181,6 +184,54 @@ group("B. The route ahead lands on the next port, then carries on");
   ok("and it agrees with where the marker is drawn",
      Math.abs(togo - away) < 8, togo + " nm on the card, " + away.toFixed(0) + " nm from the marker to Tangier");
 }
+
+// ------------------------------------------------------- silence across port calls
+group("C. A long silence is carried through every port call, on every leg");
+{
+  // For each leg: a fix a third of the way along it, then the clock set well into the next
+  // leg, so the silence spans the arrival, the call and the departure. The estimate must
+  // pass through the port, wait out the call, and end on the next leg rather than being
+  // projected onto it from the other side of an ocean.
+  const Bt = load(AIS_BUILD).T;
+  const N = Bt.PORTS.length;
+  const P = i => new Date(Bt.PORTS[i].arr).getTime();
+  const D = i => new Date(Bt.PORTS[i].dep).getTime();
+  for (let j = 0; j + 2 < N; j++){
+    const f = 0.3, pos = Bt.pointAt(Bt.LEGS[j], f);
+    const t = D(j) + f * (P(j + 1) - D(j));
+    const fix = { t, lat: pos[0], lon: pos[1], sog: Bt.LEGS[j].nm / ((P(j + 1) - D(j)) / 3600000), cog: 90 };
+    const now = D(j + 1) + 20 * 3600000;
+    const r = estimate(now, fix);
+    const port = [Bt.PORTS[j + 1].lat, Bt.PORTS[j + 1].lon];
+    const near = nearest(r.trk.map(ll), port, r.B.T.gcDist);
+    const pr = r.B.T.projectLeg(r.tip.lat, r.tip.lon, j + 1);
+    const name = `leg ${j} (${Bt.PORTS[j].n.split(",")[0]} to ${Bt.PORTS[j + 1].n.split(",")[0]})`;
+    ok(name + ": passes through the next port", near.d < 3, near.d.toFixed(1) + " nm at closest");
+    ok(name + ": ends on the following leg, past the port", pr.off < 40 && pr.s > Bt.ROUTE_OFF[j + 1],
+       "off " + pr.off.toFixed(0) + " nm, s " + pr.s.toFixed(0));
+    const hold = r.trk.filter(p => p.hold && r.B.T.gcDist([p.lat, p.lon], port) < 3).length;
+    ok(name + ": waits in port through the call", hold >= 1, hold + " hourly points in port");
+  }
+}
+{
+  // Two ports inside one silence, and the final port is a stop, not a place to run past.
+  const Bt = load(AIS_BUILD).T;
+  const P = i => new Date(Bt.PORTS[i].arr).getTime();
+  const D = i => new Date(Bt.PORTS[i].dep).getTime();
+  const pos = Bt.pointAt(Bt.LEGS[2], 0.3), t = D(2) + 0.3 * (P(3) - D(2));
+  const fix = { t, lat: pos[0], lon: pos[1], sog: 17, cog: 200 };
+  const r = estimate(D(4) + 6 * 3600000, fix);
+  const sal = nearest(r.trk.map(ll), [Bt.PORTS[3].lat, Bt.PORTS[3].lon], r.B.T.gcDist);
+  const jam = nearest(r.trk.map(ll), [Bt.PORTS[4].lat, Bt.PORTS[4].lon], r.B.T.gcDist);
+  ok("two port calls in one silence: both visited, in order", sal.d < 3 && jam.d < 3 && jam.i > sal.i,
+     sal.d.toFixed(1) + " / " + jam.d.toFixed(1) + " nm");
+  const end = estimate(P(N_END(Bt)) + 30 * 24 * 3600000, fix);
+  const fin = [Bt.PORTS[N_END(Bt)].lat, Bt.PORTS[N_END(Bt)].lon];
+  ok("a silence that outlasts the voyage ends at the final port",
+     end.tip && end.B.T.gcDist([end.tip.lat, end.tip.lon], fin) < 3,
+     end.tip && end.B.T.gcDist([end.tip.lat, end.tip.lon], fin).toFixed(0) + " nm away");
+}
+function N_END(T){ return T.PORTS.length - 1; }
 
 console.log("\n====================================================");
 console.log(`  ${pass} passed, ${fail} failed`);

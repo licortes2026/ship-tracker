@@ -611,6 +611,94 @@ function gcDest(p,brgDeg,nm){
   return [la2*180/Math.PI, ((lo2*180/Math.PI+540)%360)-180];
 }
 
+// Hours the timetable gives a leg, port to port, and the speed that implies.
+function legPace(j){
+  var hrs=(new Date(PORTS[j+1].arr)-new Date(PORTS[j].dep))/3600000;
+  return hrs>0?LEGS[j].nm/hrs:0;
+}
+
+// Which leg a fix belongs to, and whether it is in a port. Geography decides, with the
+// timetable only breaking ties. The clock cannot decide: after a long silence it names a
+// leg she may have reached only in the estimate, and projecting an old fix onto that leg
+// drags her across an ocean in a day and skips every port in between.
+function placeFix(fix){
+  var prior=dr(new Date(fix.t)).legIndex, best=-1, bo=Infinity, offs=[], j;
+  for(j=0;j<LEGS.length;j++){ offs.push(projectLeg(fix.lat,fix.lon,j)); if(offs[j].off<bo) bo=offs[j].off; }
+  for(j=0;j<LEGS.length;j++){
+    if(offs[j].off<=bo+30&&(best<0||Math.abs(j-prior)<Math.abs(best-prior))) best=j;
+  }
+  var port=-1, pd=3;
+  for(j=0;j<PORTS.length;j++){
+    var d=gcDist([fix.lat,fix.lon],[PORTS[j].lat,PORTS[j].lon]);
+    if(d<pd){ pd=d; port=j; }
+  }
+  return {leg:best, s:offs[best].s, port:port};
+}
+
+// From her last fix to now, across as many legs and port calls as the timetable puts in
+// between: finish the leg she is on, sit in each port until it is due to sail, then run the
+// next leg to its scheduled arrival. Every step is flagged an estimate. The first leg keeps
+// the reported speed unless that would bring her in ahead of the timetable.
+function planEstimate(last,now){
+  var segs=[], t=last.t, H=3600000, j, s, firstOffset=null, firstHold=null;
+  var pl=placeFix(last), v0=(last.sog>1&&last.sog<30)?last.sog:0;
+  if(pl.port>=0){
+    var depT=new Date(PORTS[pl.port].dep).getTime();
+    if(pl.port>=LEGS.length) return [];            // alongside the final port
+    if(t<depT){ segs.push({hold:true,pos:[last.lat,last.lon],t0:t,t1:depT}); t=depT; firstHold=true; }
+    j=pl.port; s=ROUTE_OFF[j]; v0=firstHold?0:v0;
+    if(!firstHold){ s=projectLeg(last.lat,last.lon,j).s; }
+  }else{
+    j=pl.leg; s=pl.s;
+  }
+  var first=!firstHold;
+  var d0=null, p0=null;
+  if(first){ p0=routePoint(s); d0=[last.lat-p0[0], last.lon-p0[1]]; }
+  var s0=s;
+  while(j<LEGS.length&&t<now){
+    var sPort=ROUTE_OFF[j]+LEGS[j].nm, dist=sPort-s;
+    var arrT=new Date(PORTS[j+1].arr).getTime();
+    var u=(first&&v0>0)?v0:legPace(j), paced=!first||!(v0>0);
+    if(dist>0.5&&arrT>t){
+      var vReq=dist/((arrT-t)/H);
+      if(vReq<u||!(u>0)){ u=vReq; paced=true; }
+    }
+    if(!(u>0)) break;
+    var t1=t+(dist/u)*H;
+    segs.push({hold:false,j:j,s0:s,v:u,t0:t,t1:t1,paced:paced,
+               d:first?d0:null,blend:first?Math.min(60,Math.max(0.001,sPort-s)):0,sRef:s0});
+    t=t1; first=false;
+    if(j+1>=LEGS.length) break;
+    var depN=new Date(PORTS[j+1].dep).getTime();
+    if(depN>t){ segs.push({hold:true,pos:[PORTS[j+1].lat,PORTS[j+1].lon],t0:t,t1:depN}); t=depN; }
+    j++; s=ROUTE_OFF[j];
+  }
+  var tail=segs.length?segs[segs.length-1]:null;
+  var endPos=null;
+  if(tail){
+    if(tail.hold) endPos=tail.pos;
+    else{ var pe=routePoint(ROUTE_OFF[tail.j]+LEGS[tail.j].nm); endPos=pe; }
+  }
+  var outp=[], steps=Math.min(4000,Math.floor((now-last.t)/EST_STEP)), k, i;
+  for(k=0;k<=steps;k++){
+    var tk=last.t+k*EST_STEP, sg=null;
+    for(i=0;i<segs.length;i++){ if(tk>=segs[i].t0&&tk<=segs[i].t1){ sg=segs[i]; break; } }
+    var lat,lon,sp,pc;
+    if(sg&&sg.hold){ lat=sg.pos[0]; lon=sg.pos[1]; sp=0; pc=true; }
+    else if(sg){
+      var sq=sg.s0+sg.v*(tk-sg.t0)/H, q=routePoint(sq);
+      var w=sg.d?Math.max(0,1-(sq-sg.sRef)/sg.blend):0;
+      lat=q[0]+(sg.d?sg.d[0]*w:0); lon=q[1]+(sg.d?sg.d[1]*w:0); sp=sg.v; pc=sg.paced;
+    }else if(endPos){
+      // Past the last segment she is simply there. One point says so; more add nothing.
+      outp.push({lat:endPos[0],lon:endPos[1],t:tk,est:true,sog:0,drSpeed:true,paced:true,hold:true});
+      break;
+    }else break;
+    outp.push({lat:lat,lon:lon,t:tk,est:true,sog:sp,drSpeed:true,paced:pc,hold:!!(sg?sg.hold:true)});
+  }
+  return outp;
+}
+
 function buildTrack(){
   var pts=realPoints();
   var i,k;
@@ -626,40 +714,8 @@ function buildTrack(){
   if(pts.length){
     var last=pts[pts.length-1];
     if(now-last.t>EST_STEP*1.5){
-      var v=(last.sog>1&&last.sog<30)?last.sog:scheduleSpeed(new Date());
-      var st=dr(new Date());
-      // Walk the planned route rather than bearing straight at the port, using the
-      // same fading correction as forwardPath. A direct bearing from an offshore
-      // fix cuts across whatever land lies between her and the port: from off
-      // Leixoes the bearing to Tangier crosses Portugal.
-      var s0=projectLeg(last.lat,last.lon,st.legIndex).s;
-      var p0=routePoint(s0);
-      var d=[last.lat-p0[0], last.lon-p0[1]];
-      var sPort=(LEGS[st.legIndex]?ROUTE_OFF[st.legIndex]+LEGS[st.legIndex].nm:ROUTE_TOTAL);
-      var BLEND=60;
-      // Two extrapolations, and she is shown by the one that keeps her farther from the port:
-      // her last reported speed, and the pace that would bring her in exactly on schedule from
-      // where the last fix put her. However fast she was last seen going, the estimate never
-      // runs ahead of the timetable. A fix later than the scheduled arrival leaves nothing to
-      // pace against, so only her speed applies.
-      var paced=false, arrT=PORTS[st.legIndex+1]?new Date(PORTS[st.legIndex+1].arr).getTime():0;
-      if(arrT>last.t&&sPort-s0>0.5){
-        var vReq=(sPort-s0)/((arrT-last.t)/3600000);
-        if(vReq<v){ v=vReq; paced=true; }
-      }
-      if(v>0&&sPort-s0>0.5){
-        var steps=Math.min(500,Math.floor((now-last.t)/EST_STEP));
-        // k=0 puts the first point exactly on the fix (w=1 restores the full
-        // offset), so the run begins where the real track ends. No sideways jump.
-        for(k=0;k<=steps;k++){
-          var sq=Math.min(sPort, s0+v*k);
-          var q=routePoint(sq);
-          var w=Math.max(0,1-(sq-s0)/BLEND);
-          out.push({lat:q[0]+d[0]*w, lon:q[1]+d[1]*w, t:last.t+k*EST_STEP,
-                    est:true, sog:v, drSpeed:true, paced:paced});
-          if(sq>=sPort) break;
-        }
-      }
+      var est=planEstimate(last,now);
+      for(k=0;k<est.length;k++) out.push(est[k]);
     }
   }
 
