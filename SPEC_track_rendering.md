@@ -238,3 +238,27 @@ continuously and this does not recur.
 9. The forward route passes through the next port, then every later port in order,
    and ends at the last port.
 10. The forward route lands on the next port even from 15 nm off the planned line.
+
+
+---
+
+## 9. The live estimate crosses port calls (build v1.6)
+
+The estimate used to be one run from the last fix toward the port the **clock** named. After a
+silence that spans a port call that was wrong: on 2026-10-16 the last fix was off the Canaries
+(29 Sep), the clock said Salvador to Jamestown, and the fix was projected onto that leg from
+2,500 nm away. She was dragged across the Atlantic in 48 hours, the Salvador call vanished, and
+the rest of the leg was crawled at 1.9 kt.
+
+Now `planEstimate()` chains the timetable from the fix:
+
+1. **Place the fix by geography.** The leg nearest the fix, with the timetable breaking ties
+   within 30 nm. A fix within 3 nm of a port is *in* that port.
+2. **Finish her leg.** Reported speed, unless that would arrive ahead of the timetable, in which
+   case the pace that arrives on time (unchanged from section 4).
+3. **Sit in each port** until its scheduled departure. A late arrival leaves at once.
+4. **Run each later leg** at the speed its timetable implies, to its scheduled arrival.
+5. Stop at the final port.
+
+Every point stays an estimate and is never mixed with reported ones. Holds carry `hold:true` and
+`sog:0`. `tests/run-pace.js` group C checks every leg of the voyage.
