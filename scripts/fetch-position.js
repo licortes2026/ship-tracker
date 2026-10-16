@@ -60,7 +60,9 @@ let best = null, meta = {}, gotStatic = false, heard = 0;
 const ws = new WebSocket("wss://stream.aisstream.io/v0/stream", { perMessageDeflate: true });
 const timer = setTimeout(finish, WINDOW);
 
+let opened = false;
 ws.on("open", () => {
+  opened = true;
   console.log(`listening ${WINDOW / 1000}s for MMSI ${MMSI}`);
   ws.send(JSON.stringify({
     APIKey: KEY,
@@ -70,8 +72,18 @@ ws.on("open", () => {
   }));
 });
 
+// Anything that is not a position or static report is logged, not dropped. An
+// auth failure or a rejected subscription arrives as an ordinary message, and
+// without this it was indistinguishable from a quiet sea.
+let odd = 0;
+function noteOdd(what, raw){
+  odd++;
+  if (odd <= 5) console.log(`unexpected from aisstream (${what}): ${String(raw).slice(0, 300)}`);
+}
+
 ws.on("message", raw => {
-  let msg; try { msg = JSON.parse(raw.toString()); } catch (e) { return; }
+  let msg; try { msg = JSON.parse(raw.toString()); } catch (e) { noteOdd("not JSON", raw); return; }
+  if (msg.error || msg.Error || msg.MessageType === undefined) noteOdd("error or unknown shape", raw.toString());
 
   if (msg.MessageType === "PositionReport"){
     const r = msg.Message.PositionReport;
@@ -114,6 +126,8 @@ function finish(){
   // underway, so this count against the window length says how well the network is
   // actually hearing her, which is the number worth watching over the voyage.
   console.log(`window closed: ${heard} report(s) in ${WINDOW / 1000}s, static data ${gotStatic ? "yes" : "no"}`);
+  if (odd) console.log(`${odd} unexpected message(s) from aisstream this window`);
+  if (!opened) console.log("the websocket never opened: no subscription was made");
 
   if (!best){
     console.log("no report in this window: out of terrestrial range, or no receiver nearby");
