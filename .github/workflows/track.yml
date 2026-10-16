@@ -44,6 +44,13 @@ jobs:
           # minutes should catch it most hours. Actions minutes are unlimited on
           # public repos, so the only cost is the job running longer.
           LISTEN_SECONDS: "480"
+          # Optional second source, off until configured (Settings, Secrets and variables).
+          # See scripts/sources/generic-http.js for what each one means.
+          AIS_EXTRA_SOURCES: ${{ vars.AIS_EXTRA_SOURCES }}
+          AIS_HTTP_URL: ${{ vars.AIS_HTTP_URL }}
+          AIS_HTTP_MAP: ${{ vars.AIS_HTTP_MAP }}
+          AIS_HTTP_HEADERS: ${{ vars.AIS_HTTP_HEADERS }}
+          AIS_HTTP_KEY: ${{ secrets.AIS_HTTP_KEY }}
         run: node scripts/fetch-position.js
 
       - name: Commit anything new
