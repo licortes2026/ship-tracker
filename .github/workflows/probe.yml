@@ -1,0 +1,37 @@
+name: Probe AIS coverage
+
+# Manual only. Does aisstream hear anything near a port, and does the key work at all.
+# It writes nothing to the repo.
+on:
+  workflow_dispatch:
+    inputs:
+      boxes:
+        description: "name:lat1,lon1,lat2,lon2;name:... (default: Salvador plus an English Channel control)"
+        required: false
+        default: "salvador:-14.0,-39.5,-12.0,-37.5;control-english-channel:49.5,-2.0,51.5,2.0"
+      seconds:
+        description: "Listening time in seconds"
+        required: false
+        default: "180"
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install the websocket client
+        run: npm install --no-audit --no-fund ws
+      - name: Listen
+        env:
+          AISSTREAM_API_KEY: ${{ secrets.AISSTREAM_API_KEY }}
+          ODYSSEY_MMSI: "311000410"
+          PROBE_BOXES: ${{ inputs.boxes }}
+          PROBE_SECONDS: ${{ inputs.seconds }}
+        run: node scripts/probe-ais.js
