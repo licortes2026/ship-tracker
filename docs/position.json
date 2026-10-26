@@ -2,15 +2,18 @@
  "mmsi": "311000410",
  "incremental": false,
  "connected": true,
- "checkedAt": 1792973431574,
- "count": 151,
- "lastT": 1790695528053,
+ "checkedAt": 1792994655164,
+ "count": 152,
+ "lastT": 1792994590410,
  "latest": {
-  "t": 1790695528053,
-  "lat": 26.57441,
-  "lon": -15.697740000000001,
-  "sog": 17.1,
-  "cog": 208.8
+  "t": 1792994590410,
+  "lat": -33.876931666666664,
+  "lon": 18.425571666666666,
+  "sog": 7.1,
+  "cog": 111
  },
- "meta": {}
+ "meta": {
+  "name": "WORLD ODYSSEY",
+  "destination": "ZA CPT"
+ }
 }
