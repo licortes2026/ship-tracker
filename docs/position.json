@@ -2,15 +2,15 @@
  "mmsi": "311000410",
  "incremental": false,
  "connected": true,
- "checkedAt": 1793221424659,
- "count": 156,
- "lastT": 1793175225195,
+ "checkedAt": 1793235200387,
+ "count": 157,
+ "lastT": 1793235174645,
  "latest": {
-  "t": 1793175225195,
-  "lat": -33.910043333333334,
-  "lon": 18.426148333333334,
+  "t": 1793235174645,
+  "lat": -33.910055,
+  "lon": 18.426155,
   "sog": 0,
-  "cog": 355.3
+  "cog": 133.2
  },
  "meta": {
   "name": "WORLD ODYSSEY",
