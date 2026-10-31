@@ -2,18 +2,18 @@
  "mmsi": "311000410",
  "incremental": false,
  "connected": true,
- "checkedAt": 1793403800950,
- "count": 163,
- "lastT": 1793403679094,
+ "checkedAt": 1793423919943,
+ "count": 164,
+ "lastT": 1793423662765,
  "latest": {
-  "t": 1793403679094,
-  "lat": -33.91005166666667,
-  "lon": 18.426136666666665,
+  "t": 1793423662765,
+  "lat": -33.910043333333334,
+  "lon": 18.426133333333333,
   "sog": 0,
-  "cog": 270.7
+  "cog": 255.6
  },
  "meta": {
   "name": "WORLD ODYSSEY",
-  "destination": "ZA CPT"
+  "destination": "MU PLU"
  }
 }
