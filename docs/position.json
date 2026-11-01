@@ -2,15 +2,18 @@
  "mmsi": "311000410",
  "incremental": false,
  "connected": true,
- "checkedAt": 1793561836467,
- "count": 168,
- "lastT": 1793544999839,
+ "checkedAt": 1793576150025,
+ "count": 169,
+ "lastT": 1793576105197,
  "latest": {
-  "t": 1793544999839,
-  "lat": -33.910048333333336,
-  "lon": 18.426153333333332,
+  "t": 1793576105197,
+  "lat": -33.91020666666667,
+  "lon": 18.42634333333333,
   "sog": 0,
-  "cog": 240.8
+  "cog": 254.9
  },
- "meta": {}
+ "meta": {
+  "name": "WORLD ODYSSEY",
+  "destination": "MU PLU"
+ }
 }
